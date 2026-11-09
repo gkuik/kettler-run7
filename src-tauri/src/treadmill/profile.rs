@@ -30,7 +30,7 @@ pub const RECOVERY_SPEED_KMH: f32 = 3.0;
 pub const RECOVERY_INCLINE_PCT: f32 = 0.0;
 
 /// Bornes d'un segment. Vitesse et inclinaison : celles du RUN 7 (le profil
-/// s'édite aussi tapis déconnecté) ; le Rust borne et plafonne encore à l'envoi.
+/// s'édite aussi tapis déconnecté) ; le Rust borne encore aux limites lues à l'envoi.
 pub const SEGMENT_MIN_M: u32 = 50;
 pub const SEGMENT_MAX_M: u32 = 10_000;
 pub const SPEED_MIN_KMH: f32 = 0.8;
@@ -67,8 +67,7 @@ fn seg(distance_m: u32, speed_kmh: f32, incline_pct: f32) -> ProfileSegment {
     }
 }
 
-/// Profils fournis avec l'application. Toutes les vitesses restent sous le
-/// plafond par défaut (6,0 km/h) : ils se déroulent tels quels.
+/// Profils fournis avec l'application (marche rapide : 6,0 km/h au plus).
 pub fn starter_profiles() -> Vec<RunProfile> {
     let builtin = |id: &str, name: &str, segments: Vec<ProfileSegment>| RunProfile {
         id: id.into(),
@@ -521,7 +520,7 @@ mod tests {
     }
 
     #[test]
-    fn profils_de_depart_valides_et_sous_le_plafond() {
+    fn profils_de_depart_valides() {
         let all = starter_profiles();
         assert_eq!(all.len(), 3);
         for p in &all {

@@ -8,10 +8,6 @@
 
 import type { TreadmillSnapshot } from "./types";
 
-/** Bornes du plafond de vitesse acceptées par le Rust. */
-export const CAP_MIN_KMH = 1;
-export const CAP_MAX_KMH = 20;
-
 /** Valeurs de repli tant que le tapis n'a pas annoncé ses bornes (RUN 7 vérifié). */
 const FALLBACK_SPEED_MIN = 0.8;
 const FALLBACK_SPEED_MAX = 20;
@@ -99,10 +95,10 @@ export function isStarting(s: TreadmillSnapshot): boolean {
   return s.running === true && (s.targetSpeedKmh ?? 0) < speedBounds(s).min - 0.05;
 }
 
-/** Bornes de consigne de vitesse : `[speedMin, min(plafond, speedMax)]`. */
+/** Bornes de consigne de vitesse : `[speedMin, speedMax]` annoncées par le tapis. */
 export function speedBounds(s: TreadmillSnapshot): { min: number; max: number } {
   const min = s.limits?.speedMinKmh ?? FALLBACK_SPEED_MIN;
-  const max = Math.min(s.speedCapKmh, s.limits?.speedMaxKmh ?? FALLBACK_SPEED_MAX);
+  const max = s.limits?.speedMaxKmh ?? FALLBACK_SPEED_MAX;
   return { min, max: Math.max(min, max) };
 }
 
@@ -174,15 +170,10 @@ export function inclineStepUseful(s: TreadmillSnapshot, delta: number): boolean 
   );
 }
 
-/** Un préréglage est proposé s'il ne dépasse pas le plafond ni la vitesse max. */
+/** Un préréglage est proposé s'il reste dans les limites du tapis. */
 export function presetAllowed(s: TreadmillSnapshot, kmh: number): boolean {
   const { min, max } = speedBounds(s);
   return canAdjust(s) && !isStarting(s) && kmh >= min - 1e-6 && kmh <= max + 1e-6;
-}
-
-/** Plafond de vitesse borné à 1–20 km/h, au dixième. */
-export function clampCap(kmh: number): number {
-  return round1(clamp(round1(kmh), CAP_MIN_KMH, CAP_MAX_KMH));
 }
 
 // ── Profils de course ──────────────────────────────────────────────────────

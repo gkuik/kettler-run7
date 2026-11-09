@@ -57,7 +57,7 @@ describe("validation (mêmes règles que le Rust)", () => {
     );
   });
 
-  it("les profils de départ sont valides et sous le plafond par défaut", () => {
+  it("les profils de départ sont valides (marche rapide : 6 km/h au plus)", () => {
     const all = starterProfiles();
     expect(all.map((p) => p.name)).toEqual(["Marche douce", "Collines", "Fractionné"]);
     for (const p of all) {

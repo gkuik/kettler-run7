@@ -43,7 +43,7 @@ Hors Tauri (`npx vite` dans un navigateur), l'interface utilise à la place le t
 
 **Commentaires de code en français ; interface en français.**
 
-**Interface : desktop uniquement, design « Piste »** (fenêtre minimale 900×680). Sources du design dans [docs/design/](docs/design/) : `piste-tokens.dc.html` (direction, tokens) et `piste-console.dc.html` (console, tous les états). Tous les styles passent par les tokens `--kr-*` de `src/app.css` ; une couleur vive signifie toujours un état (vert démarrer, ambre pause, rouge stop et alertes, orange avertissement, bleu donnée). Polices Barlow et Barlow Semi Condensed embarquées via `@fontsource` : pas de Google Fonts, l'appli marche hors ligne. Non repris du design : courbe de vitesse et objectif (options facultatives).
+**Interface : desktop uniquement, design « Piste »** (fenêtre minimale 900×680). Sources du design dans [docs/design/](docs/design/) : `piste-tokens.dc.html` (direction, tokens) et `piste-console.dc.html` (console, tous les états). Tous les styles passent par les tokens `--kr-*` de `src/app.css` ; une couleur vive signifie toujours un état (vert démarrer, ambre pause, rouge stop et alertes, orange avertissement, bleu donnée). Polices Barlow et Barlow Semi Condensed embarquées via `@fontsource` : pas de Google Fonts, l'appli marche hors ligne. Non repris du design : courbe de vitesse et objectif (options facultatives), plafond de vitesse (retiré).
 
 ### Architecture
 
@@ -83,9 +83,8 @@ Commandes (toutes `async`, erreur = `String` lisible en français) :
 | `disconnect` | — | Déconnexion voulue : pas de reconnexion automatique |
 | `start` | — | Écrit Online = 0 (compte à rebours 3-2-1 puis 0,8 km/h) |
 | `stop` | — | Écrit Online = 1. **Prioritaire** : part immédiatement, avant toute écriture en attente, et est toujours accepté |
-| `set_target_speed` | `kmh: f32` | Arrondi à 0,1 ; borné à `[speed_min, min(speed_cap, speed_max)]` ; refusé si la bande ne tourne pas |
+| `set_target_speed` | `kmh: f32` | Arrondi à 0,1 ; borné à `[speed_min, speed_max]` (limites lues sur le tapis) ; refusé si la bande ne tourne pas |
 | `set_target_incline` | `pct: f32` | Arrondi à 0,1 ; borné aux limites du tapis ; refusé si la bande ne tourne pas |
-| `set_speed_cap` | `kmh: f32` | Plafond appliqué à toute consigne (1–20 km/h, défaut **6,0**). S'il descend sous la consigne courante, la consigne est ramenée au plafond |
 | `list_profiles` | — | Profils de départ (lecture seule) puis profils de l'utilisateur, par nom |
 | `save_profile` | `profile: RunProfile` | Valide et enregistre (crée si `id` est vide) ; rend le profil enregistré. Refusé pour un profil de départ, et pour le profil en cours bande en marche |
 | `delete_profile` | `id: String` | Supprime un profil de l'utilisateur (même refus) |
@@ -101,15 +100,15 @@ Règles de la session :
 
 ### Profils de course
 
-Un profil = une suite de segments (distance en m, vitesse, inclinaison). Stockés dans `profiles.json` (dossier de données de l'appli : `~/Library/Application Support/<identifiant>/`), avec le profil choisi ; un fichier illisible est renommé `.json.illisible`, jamais écrasé. Trois profils de départ en dur (`starter_profiles`, toutes vitesses ≤ 6,0 km/h = plafond par défaut), en lecture seule : on les duplique pour les adapter. Bornes d'un segment : 50–10 000 m, 0,8–20 km/h, 0–15 % ; 60 segments au plus. Le TS (`profiles.ts`) recopie bornes et messages pour l'éditeur ; le Rust revalide.
+Un profil = une suite de segments (distance en m, vitesse, inclinaison). Stockés dans `profiles.json` (dossier de données de l'appli : `~/Library/Application Support/<identifiant>/`), avec le profil choisi ; un fichier illisible est renommé `.json.illisible`, jamais écrasé. Trois profils de départ en dur (`starter_profiles`, vitesses de marche ≤ 6,0 km/h), en lecture seule : on les duplique pour les adapter. Bornes d'un segment : 50–10 000 m, 0,8–20 km/h, 0–15 % ; 60 segments au plus. Le TS (`profiles.ts`) recopie bornes et messages pour l'éditeur ; le Rust revalide.
 
 Déroulement (choix de l'utilisateur, 2026-11-09), entièrement côté Rust (`ProfileRun` + `Model::profile_order`, appelé en fin de cycle de polling par `Treadmill::drive_profile`) :
 - Choisir un profil ne lance rien. Après « Démarrer », le 1er segment part à la fin du compte à rebours (consigne relue ≥ vitesse min).
 - La progression est la **somme des avancées** du compteur Distance, pas sa valeur : une remise à zéro pendant `Treadmill::start` (démarrage ignoré après une longue pause) ne fait pas reculer le profil. Une remise à zéro hors démarrage, ou un STOP envoyé bande déjà arrêtée (fin de séance), le ramène au début. Pause : progression gardée, consignes du segment renvoyées à la reprise.
-- Changement de segment : vitesse et inclinaison envoyées une fois (bornées et plafonnées comme toute consigne, seulement ce qui diffère), puis vérifiées à la relecture ; non relues en 5 s → renvoi, 3 envois au plus. Ensuite le profil ne touche plus à rien jusqu'au segment suivant : **un réglage manuel (appli ou console) vaut jusqu'à la fin du segment** (`manual` dans `ProfileProgress`).
+- Changement de segment : vitesse et inclinaison envoyées une fois (bornées aux limites du tapis comme toute consigne, seulement ce qui diffère), puis vérifiées à la relecture ; non relues en 5 s → renvoi, 3 envois au plus. Ensuite le profil ne touche plus à rien jusqu'au segment suivant : **un réglage manuel (appli ou console) vaut jusqu'à la fin du segment** (`manual` dans `ProfileProgress`).
 - Après le dernier segment : récupération lente, min(3,0 km/h, vitesse du dernier segment) et 0 %, **sans arrêt automatique**.
 - Les envois du profil passent par `write_frame` avec la garde `stop_gen` : un STOP les annule comme toute commande.
-- Interface : section « Profil » de la colonne de droite (liste, ✎ voir/modifier, + créer ; bande en marche : nom + « Sans profil ») ; bande `ProfileStrip` sous la vitesse (segment, mètres restants, aperçu, segment suivant annoncé en orange dans les derniers mètres : min(60 m, 40 % du segment) ; vitesse affichée = vitesse plafonnée). **L'éditeur n'est accessible que bande arrêtée** (`canEditProfiles`) ; si la bande démarre, App.svelte revient d'office à la console (brouillon gardé, « reprendre » dans la section Profil).
+- Interface : section « Profil » de la colonne de droite (liste, ✎ voir/modifier, + créer ; bande en marche : nom + « Sans profil ») ; bande `ProfileStrip` sous la vitesse (segment, mètres restants, aperçu, segment suivant annoncé en orange dans les derniers mètres : min(60 m, 40 % du segment)). **L'éditeur n'est accessible que bande arrêtée** (`canEditProfiles`) ; si la bande démarre, App.svelte revient d'office à la console (brouillon gardé, « reprendre » dans la section Profil).
 - Clavier dans l'éditeur : Échap envoie toujours l'arrêt ; **Espace dans un champ texte tape une espace** (seule exception à « Espace = arrêt », sûre car l'éditeur n'existe que bande arrêtée). En pause, Échap y termine donc la séance, comme sur la console.
 - À valider sur le vrai tapis : enchaînement des consignes vitesse + inclinaison au changement de segment (deux écritures de suite, chacune avec `WRITE_QUIET`).
 
@@ -126,7 +125,7 @@ Déroulement (choix de l'utilisateur, 2026-11-09), entièrement côté Rust (`Pr
 | `release/X.Y.Z` | Préparation d'une version (numéros de version, derniers correctifs), partie de `develop`, fusionnée dans `main` (tag `vX.Y.Z`) puis dans `develop` |
 | `hotfix/X.Y.Z` | Correction urgente d'une version publiée, partie de `main`, fusionnée dans `main` (tag) puis dans `develop` |
 
-- Noms de branches en minuscules, mots séparés par des tirets (`feature/plafond-vitesse`).
+- Noms de branches en minuscules, mots séparés par des tirets (`feature/profils-course`).
 - Merges en `--no-ff` pour garder la trace de chaque branche.
 - La configuration git flow est déjà dans `.git/config` (`gitflow.*`) : l'outil `git flow` (`brew install git-flow-avh`) peut s'en servir tel quel, mais il n'est pas obligatoire.
 - Numéro de version (SemVer) à changer en même temps dans `package.json`, `src-tauri/Cargo.toml` et `src-tauri/tauri.conf.json`, sur la branche `release/` ou `hotfix/`.
@@ -152,7 +151,8 @@ Déroulement (choix de l'utilisateur, 2026-11-09), entièrement côté Rust (`Pr
 - Le tapis est une machine qui peut blesser. **Ne jamais envoyer d'écriture (démarrage, vitesse, inclinaison) sans l'accord explicite de l'utilisateur et sans quelqu'un à côté du tapis**, clé de sécurité en place.
 - Les lectures sont sans danger ; tout le reste demande l'accord.
 - Pendant un démarrage à distance, l'utilisateur doit rester sur les rebords latéraux, pas sur la bande.
-- Les scripts de test plafonnent leurs consignes (3,0 km/h, 3,0 %) et terminent toujours par un arrêt (dans un `finally`). Garder ce principe dans l'application : arrêt toujours accessible (bouton PAUSE/STOP dès qu'une séance est en cours ou que l'état est incertain, et Échap/Espace qui envoient TOUJOURS l'arrêt, quel que soit l'affichage), plafond de vitesse configurable, arrêt en cas de perte de connexion si possible.
+- Les scripts de test plafonnent leurs consignes (3,0 km/h, 3,0 %) et terminent toujours par un arrêt (dans un `finally`). Garder ce principe dans l'application : arrêt toujours accessible (bouton PAUSE/STOP dès qu'une séance est en cours ou que l'état est incertain, et Échap/Espace qui envoient TOUJOURS l'arrêt, quel que soit l'affichage), arrêt en cas de perte de connexion si possible.
+- **Pas de plafond de vitesse** : retiré à la demande de l'utilisateur (2026-11-09, jugé inutile). Les consignes sont seulement bornées aux limites annoncées par le tapis (SpeedMin/SpeedMax : 0,8–20 km/h). Ne pas le réintroduire sans demande de l'utilisateur.
 - Le bouton stop de la console et la clé de sécurité restent prioritaires sur le Bluetooth.
 
 ## Environnement macOS (important)

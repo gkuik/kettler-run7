@@ -69,7 +69,7 @@ describe("règles du contrat", () => {
     await connect();
     await tm.setTargetSpeed(3).catch(() => {});
     expect((await tm.getState()).lastError).not.toBeNull();
-    await tm.setSpeedCap(6);
+    await tm.start();
     expect((await tm.getState()).lastError).toBeNull();
   });
 
@@ -89,29 +89,19 @@ describe("règles du contrat", () => {
     expect(s.speedKmh).toBeCloseTo(0.8, 5);
   });
 
-  it("borne la consigne au plafond et suit une rampe de ~0,2 km/h/s", async () => {
+  it("borne la consigne à la vitesse max et suit une rampe de ~0,2 km/h/s", async () => {
     await connect();
     await startAndWaitBelt();
+    await tm.setTargetSpeed(25);
+    expect((await tm.getState()).targetSpeedKmh).toBe(20);
     await tm.setTargetSpeed(9);
-    expect((await tm.getState()).targetSpeedKmh).toBe(6);
+    expect((await tm.getState()).targetSpeedKmh).toBe(9);
     await tm.setTargetSpeed(2.84);
     expect((await tm.getState()).targetSpeedKmh).toBe(2.8);
     await advance(5);
     expect((await tm.getState()).speedKmh).toBeCloseTo(1.8, 5);
     await advance(10);
     expect((await tm.getState()).speedKmh).toBeCloseTo(2.8, 5);
-  });
-
-  it("ramène la consigne quand le plafond descend dessous", async () => {
-    await connect();
-    await startAndWaitBelt();
-    await tm.setTargetSpeed(5);
-    await tm.setSpeedCap(4);
-    const s = await tm.getState();
-    expect(s.speedCapKmh).toBe(4);
-    expect(s.targetSpeedKmh).toBe(4);
-    await tm.setSpeedCap(0.2);
-    expect((await tm.getState()).speedCapKmh).toBe(1);
   });
 
   it("incline à ~0,3 %/s dans les limites du tapis", async () => {

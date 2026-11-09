@@ -27,17 +27,14 @@
     summarize,
   } from "../profiles";
   import { profiles } from "../profiles.svelte";
-  import { treadmill } from "../treadmill.svelte";
   import type { ProfileSegment } from "../types";
   import ProfileChart from "./ProfileChart.svelte";
   import StepField from "./StepField.svelte";
 
   const draft = $derived(profiles.draft!);
   const readOnly = $derived(draft.builtin);
-  const cap = $derived(treadmill.snap.speedCapKmh);
   const summary = $derived(summarize(draft.segments));
   const error = $derived(readOnly ? null : profileError(draft));
-  const overCap = $derived(draft.segments.some((s) => s.speedKmh > cap + 1e-6));
 
   let selected = $state<number | null>(null);
   let confirm = $state<"leave" | "delete" | null>(null);
@@ -171,22 +168,17 @@
 
   <div class="chart-card">
     <div class="chart">
-      <ProfileChart segments={draft.segments} capKmh={cap} {selected} onselect={selectFromChart} />
+      <ProfileChart segments={draft.segments} {selected} onselect={selectFromChart} />
     </div>
     <dl class="summary">
       <div><dt>Distance</dt><dd>{formatProfileDistance(summary.totalM)}</dd></div>
       <div><dt>Durée estimée</dt><dd>{formatDuration(summary.durationS)}</dd></div>
       <div><dt>Dénivelé</dt><dd>+{Math.round(summary.gainM)} m</dd></div>
-      <div class:warn={overCap}>
+      <div>
         <dt>Vitesse max</dt>
         <dd>{decimal(summary.maxSpeedKmh, 1)} km/h</dd>
       </div>
     </dl>
-    {#if overCap}
-      <p class="cap-note">
-        Au-dessus du plafond actuel ({decimal(cap, 1)} km/h) : ces segments seront ramenés au plafond pendant la séance.
-      </p>
-    {/if}
   </div>
 
   <div class="table-card">
@@ -227,7 +219,6 @@
             max={SPEED_MAX_KMH}
             digits={1}
             error={errs.speed}
-            warning={seg.speedKmh > cap + 1e-6 ? `Au-dessus du plafond (${decimal(cap, 1)} km/h)` : undefined}
             disabled={readOnly}
             onfocus={() => (selected = i)}
             onchange={(v) => update(i, { speedKmh: v })}
@@ -467,16 +458,6 @@
     font-size: 22px;
     font-variant-numeric: tabular-nums;
     color: var(--kr-text);
-  }
-
-  .summary .warn dd {
-    color: var(--kr-warn);
-  }
-
-  .cap-note {
-    margin: 0;
-    font-size: 13px;
-    color: var(--kr-text-2);
   }
 
   .table-card {

@@ -13,15 +13,13 @@
     segments: ProfileSegment[];
     /** Distance parcourue dans le profil (console) ; `null` : pas de progression. */
     doneM?: number | null;
-    /** Plafond de vitesse : trait orange, et partie des colonnes au-dessus en orange. */
-    capKmh?: number | null;
     /** Segment mis en évidence (éditeur). */
     selected?: number | null;
     onselect?: (index: number) => void;
     compact?: boolean;
   }
 
-  let { segments, doneM = null, capKmh = null, selected = null, onselect, compact = false }: Props =
+  let { segments, doneM = null, selected = null, onselect, compact = false }: Props =
     $props();
 
   // Repère : x de 0 à 1000, y de 0 à 100. Vitesse en haut (0–62), inclinaison en bas (70–100).
@@ -41,7 +39,6 @@
     x: number;
     w: number;
     speedY: number;
-    capY: number | null;
     incY: number;
     seg: ProfileSegment;
   }
@@ -56,19 +53,14 @@
       at += d;
       const speed = Math.max(0, seg.speedKmh || 0);
       const speedY = SPEED_BOTTOM - (Math.min(speed, speedTop) / speedTop) * SPEED_H;
-      const over = capKmh !== null && speed > capKmh + 1e-6;
-      const capY = over ? SPEED_BOTTOM - (capKmh! / speedTop) * SPEED_H : null;
       const inc = Math.max(0, seg.inclinePct || 0);
       const incY = INC_BOTTOM - (Math.min(inc, inclineTop) / inclineTop) * (INC_BOTTOM - INC_TOP);
-      return { x, w, speedY, capY, incY, seg };
+      return { x, w, speedY, incY, seg };
     });
   });
 
   const doneX = $derived(
     doneM === null || total <= 0 ? null : (Math.min(Math.max(0, doneM), total) / total) * W,
-  );
-  const capLineY = $derived(
-    capKmh !== null && capKmh < speedTop ? SPEED_BOTTOM - (capKmh / speedTop) * SPEED_H : null,
   );
 
   /** Graduations de distance : pas « rond » donnant 3 à 8 repères. */
@@ -112,9 +104,6 @@
             width={Math.max(0.5, b.w - GAP)}
             height={SPEED_BOTTOM - b.speedY}
           ></rect>
-          {#if b.capY !== null}
-            <rect class="over" x={b.x + GAP / 2} y={b.speedY} width={Math.max(0.5, b.w - GAP)} height={b.capY - b.speedY}></rect>
-          {/if}
           <rect
             class="incline"
             class:sel={selected === i}
@@ -136,9 +125,6 @@
         <line class="cursor" x1={doneX} x2={doneX} y1="0" y2="100"></line>
       {/if}
 
-      {#if capLineY !== null}
-        <line class="cap" x1="0" x2={W} y1={capLineY} y2={capLineY}></line>
-      {/if}
     </svg>
 
     {#if showLabels}
@@ -159,9 +145,6 @@
     {#if !compact}
       <span class="lane-title" style:top="0">km/h</span>
       <span class="lane-title" style:top={`${INC_TOP}%`}>%</span>
-      {#if capLineY !== null}
-        <span class="cap-label" style:top={`${capLineY}%`} title="Plafond de vitesse">{decimal(capKmh ?? 0, 1)}</span>
-      {/if}
     {/if}
 
     {#if onselect}
@@ -223,13 +206,8 @@
     fill: var(--kr-text-3);
   }
 
-  .over {
-    fill: var(--kr-warn);
-  }
-
   .faded .speed,
-  .faded .incline,
-  .faded .over {
+  .faded .incline {
     opacity: .3;
   }
 
@@ -248,13 +226,6 @@
   .cursor {
     stroke: var(--kr-text);
     stroke-width: 2px;
-    vector-effect: non-scaling-stroke;
-  }
-
-  .cap {
-    stroke: var(--kr-warn);
-    stroke-width: 1.5px;
-    stroke-dasharray: 6 4;
     vector-effect: non-scaling-stroke;
   }
 
@@ -278,8 +249,7 @@
     color: var(--kr-text-3);
   }
 
-  .lane-title,
-  .cap-label {
+  .lane-title {
     position: absolute;
     font-size: 11px;
     font-weight: 700;
@@ -292,14 +262,6 @@
     left: -2px;
     transform: translateX(-100%);
     padding-right: 6px;
-  }
-
-  /* Valeur du plafond dans la marge de gauche, au niveau de son trait. */
-  .cap-label {
-    left: -2px;
-    transform: translate(-100%, -50%);
-    padding-right: 6px;
-    color: var(--kr-warn);
   }
 
   .hit {

@@ -21,7 +21,6 @@
 // La « physique » (la bande) tourne en permanence, connectée ou non : seul
 // l'instantané envoyé à l'interface dépend de la liaison.
 
-import { clampCap } from "./controls";
 import { ProfileRunner, cloneProfile, profileError, starterProfiles } from "./profiles";
 import {
   emptySnapshot,
@@ -141,8 +140,7 @@ export class MockTreadmill {
     this.pendingStop = false;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
-    const cap = this.snap.speedCapKmh;
-    this.snap = { ...emptySnapshot(), speedCapKmh: cap };
+    this.snap = emptySnapshot();
     this.emit();
   }
 
@@ -201,8 +199,7 @@ export class MockTreadmill {
   async setTargetSpeed(kmh: number): Promise<void> {
     this.requireRunning();
     if (!Number.isFinite(kmh)) throw this.fail("Vitesse invalide");
-    const max = Math.min(this.snap.speedCapKmh, LIMITS.speedMaxKmh);
-    const v = tenth(Math.min(max, Math.max(LIMITS.speedMinKmh, tenth(kmh))));
+    const v = tenth(Math.min(LIMITS.speedMaxKmh, Math.max(LIMITS.speedMinKmh, tenth(kmh))));
     // Pendant le compte à rebours, le tapis ignore les écritures.
     if (this.countdownS <= 0) {
       this.target = v;
@@ -219,15 +216,6 @@ export class MockTreadmill {
       this.targetIncline = v;
       this.runner?.onManual();
     }
-    this.ok();
-  }
-
-  async setSpeedCap(kmh: number): Promise<void> {
-    if (!Number.isFinite(kmh)) throw this.fail("Plafond invalide");
-    const cap = clampCap(kmh);
-    this.snap.speedCapKmh = cap;
-    // Plafond sous la consigne courante : la consigne est ramenée au plafond.
-    if (this.target > cap && this.snap.connection === "connected") this.target = cap;
     this.ok();
   }
 
@@ -387,8 +375,7 @@ export class MockTreadmill {
     if (!this.belt || this.countdownS > 0) return;
     const wanted = this.runner.step();
     if (!wanted) return;
-    const max = Math.min(this.snap.speedCapKmh, LIMITS.speedMaxKmh);
-    this.target = tenth(Math.min(max, Math.max(LIMITS.speedMinKmh, wanted.speedKmh)));
+    this.target = tenth(Math.min(LIMITS.speedMaxKmh, Math.max(LIMITS.speedMinKmh, wanted.speedKmh)));
     this.targetIncline = tenth(
       Math.min(LIMITS.inclineMaxPct, Math.max(LIMITS.inclineMinPct, wanted.inclinePct)),
     );

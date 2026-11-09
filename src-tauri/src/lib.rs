@@ -55,7 +55,6 @@ pub fn run() {
             commands::stop,
             commands::set_target_speed,
             commands::set_target_incline,
-            commands::set_speed_cap,
             commands::list_profiles,
             commands::save_profile,
             commands::delete_profile,

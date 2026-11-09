@@ -62,8 +62,6 @@ export const api = {
     inTauri ? call<void>("set_target_speed", { kmh }) : mock().setTargetSpeed(kmh),
   setTargetIncline: (pct: number): Promise<void> =>
     inTauri ? call<void>("set_target_incline", { pct }) : mock().setTargetIncline(pct),
-  setSpeedCap: (kmh: number): Promise<void> =>
-    inTauri ? call<void>("set_speed_cap", { kmh }) : mock().setSpeedCap(kmh),
 
   /** Profils de départ puis profils de l'utilisateur. */
   listProfiles: (): Promise<RunProfile[]> =>

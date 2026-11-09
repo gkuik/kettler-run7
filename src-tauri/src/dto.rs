@@ -73,8 +73,6 @@ pub struct TreadmillSnapshot {
     pub elapsed_s: u32,
     pub limits: Option<Limits>,
     pub device: Option<DeviceInfo>,
-    /// Plafond de vitesse appliqué par l'application à toute consigne envoyée.
-    pub speed_cap_kmh: f32,
     /// Dernière erreur lisible (connexion, commande refusée…), effacée au succès suivant.
     pub last_error: Option<String>,
     /// Profil de course choisi et sa progression ; `None` = pas de profil.

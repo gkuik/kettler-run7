@@ -61,8 +61,6 @@ export interface TreadmillSnapshot {
   elapsedS: number;
   limits: Limits | null;
   device: DeviceInfo | null;
-  /** Plafond de vitesse appliqué par l'application à toute consigne envoyée. */
-  speedCapKmh: number;
   /** Dernière erreur lisible (connexion, commande refusée…), effacée au succès suivant. */
   lastError: string | null;
   /** Profil de course choisi et sa progression ; `null` = pas de profil. */
@@ -110,10 +108,7 @@ export interface ProfileProgress {
   manual: boolean;
 }
 
-/** Plafond de vitesse par défaut (même valeur que côté Rust). */
-export const DEFAULT_SPEED_CAP_KMH = 6.0;
-
-/** État initial, équivalent du `TreadmillSnapshot::default()` Rust (plafond mis à part). */
+/** État initial, équivalent du `TreadmillSnapshot::default()` Rust. */
 export function emptySnapshot(): TreadmillSnapshot {
   return {
     connection: "disconnected",
@@ -129,7 +124,6 @@ export function emptySnapshot(): TreadmillSnapshot {
     elapsedS: 0,
     limits: null,
     device: null,
-    speedCapKmh: DEFAULT_SPEED_CAP_KMH,
     lastError: null,
     profile: null,
   };

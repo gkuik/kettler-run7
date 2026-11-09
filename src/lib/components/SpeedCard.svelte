@@ -105,7 +105,6 @@
       <div class="gauge">
         <div class="bar">
           <div class="track">
-            <div class="over" style:left={pct(snap.speedCapKmh)}></div>
             <div class="fill" class:live={linked} style:width={pct(snap.speedKmh ?? 0)}></div>
           </div>
           {#if target !== null}
@@ -114,9 +113,6 @@
         </div>
         <div class="scale">
           <span>0</span>
-          <span class="cap" style:left={`clamp(60px, ${pct(snap.speedCapKmh)}, calc(100% - 60px))`}>
-            plafond {formatTenths(snap.speedCapKmh)}
-          </span>
           <span class="scale-max">{scaleMax}</span>
         </div>
       </div>
@@ -288,19 +284,6 @@
     overflow: hidden;
   }
 
-  /* Zone interdite, au-delà du plafond. */
-  .over {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    background: repeating-linear-gradient(
-      135deg,
-      transparent 0 5px,
-      var(--kr-line) 5px 8px
-    );
-  }
-
   .fill {
     position: absolute;
     left: 0;
@@ -331,13 +314,6 @@
     height: 16px;
     font-size: var(--kr-fs-hint);
     color: var(--kr-text-3);
-  }
-
-  .cap {
-    position: absolute;
-    top: 0;
-    white-space: nowrap;
-    transform: translateX(-50%);
   }
 
   .scale-max {
