@@ -38,17 +38,12 @@
       p.next !== null &&
       remainingM <= Math.min(ANNOUNCE_M, p.current.distanceM * ANNOUNCE_SHARE),
   );
-  /** Vitesse réellement envoyée : le Rust plafonne (plafond et vitesse max du tapis). */
-  const ceiling = $derived(Math.min(snap.speedCapKmh, snap.limits?.speedMaxKmh ?? Infinity));
-  const capped = (s: ProfileSegment) => s.speedKmh > ceiling + 1e-6;
 
   const summary = $derived(summarize(segments));
 </script>
 
 {#snippet consigne(s: ProfileSegment)}
-  <span class:capped={capped(s)} title={capped(s) ? `${decimal(s.speedKmh, 1)} km/h prévus, ramenés au plafond` : undefined}
-    >{decimal(Math.min(s.speedKmh, ceiling), 1)}</span
-  ><small>km/h</small>&nbsp; {decimal(s.inclinePct, 1)}<small>%</small>
+  {decimal(s.speedKmh, 1)}<small>km/h</small>&nbsp; {decimal(s.inclinePct, 1)}<small>%</small>
 {/snippet}
 
 {#if p}
@@ -69,8 +64,6 @@
         <div class="sub">
           {#if p.manual}
             <span class="manual">réglage manuel</span> · encore {Math.round(remainingM)} m
-          {:else if capped(p.current)}
-            <span class="capped">plafonné</span> · encore {Math.round(remainingM)} m
           {:else}
             encore {Math.round(remainingM)} m
           {/if}
@@ -82,7 +75,7 @@
     </div>
 
     <div class="chart">
-      <ProfileChart {segments} doneM={started ? doneM : null} capKmh={snap.speedCapKmh} compact />
+      <ProfileChart {segments} doneM={started ? doneM : null} compact />
     </div>
 
     <div class="next" role="status">
@@ -198,13 +191,6 @@
     color: var(--kr-text-2);
   }
 
-  .capped {
-    color: var(--kr-warn);
-  }
-
-  .sub .capped {
-    font-weight: 700;
-  }
 
   .chart {
     min-width: 0;

@@ -55,7 +55,7 @@ pub async fn stop(treadmill: State<'_, Treadmill>) -> Result<(), String> {
     r
 }
 
-/// Consigne de vitesse (km/h), arrondie, bornée et plafonnée côté Rust.
+/// Consigne de vitesse (km/h), arrondie et bornée aux limites du tapis côté Rust.
 #[tauri::command]
 pub async fn set_target_speed(kmh: f32, treadmill: State<'_, Treadmill>) -> Result<(), String> {
     let r = treadmill.set_target_speed(kmh).await;
@@ -68,14 +68,6 @@ pub async fn set_target_speed(kmh: f32, treadmill: State<'_, Treadmill>) -> Resu
 pub async fn set_target_incline(pct: f32, treadmill: State<'_, Treadmill>) -> Result<(), String> {
     let r = treadmill.set_target_incline(pct).await;
     log_result(&format!("set_target_incline({pct})"), &r);
-    r
-}
-
-/// Plafond de vitesse (1–20 km/h) appliqué à toute consigne.
-#[tauri::command]
-pub async fn set_speed_cap(kmh: f32, treadmill: State<'_, Treadmill>) -> Result<(), String> {
-    let r = treadmill.set_speed_cap(kmh).await;
-    log_result(&format!("set_speed_cap({kmh})"), &r);
     r
 }
 

@@ -208,7 +208,7 @@ button:focus-visible {
   filter: brightness(1.08);
 }
 
-/* Bouton de réglage (vitesse, inclinaison, plafond). */
+/* Bouton de réglage (vitesse, inclinaison). */
 .kr-btn {
   min-width: 0;
   min-height: 0;

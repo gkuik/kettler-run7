@@ -5,7 +5,7 @@
 //!   compteur de distance du tapis repart en arrière ;
 //! - transitions de connexion (dont `lost_while_running`) ;
 //! - préparation des consignes : arrondi à 0,1, bornage aux limites du tapis,
-//!   plafond de vitesse, refus si la bande ne tourne pas ;
+//!   refus si la bande ne tourne pas ;
 //! - déroulement du profil de course choisi (`profile::ProfileRun`) : quelles
 //!   consignes envoyer, et quand.
 //!
@@ -17,12 +17,6 @@ use std::time::{Duration, Instant};
 use super::profile::ProfileRun;
 use crate::dto::{ConnectionState, DeviceInfo, Limits, RunProfile, TreadmillSnapshot};
 use crate::kettler::protocol::{Instruction, Message, ValueId};
-
-/// Plafond de vitesse par défaut (km/h).
-pub const DEFAULT_SPEED_CAP_KMH: f32 = 6.0;
-/// Bornes du plafond réglable (km/h).
-pub const SPEED_CAP_MIN_KMH: f32 = 1.0;
-pub const SPEED_CAP_MAX_KMH: f32 = 20.0;
 
 /// Messages d'erreur partagés (affichés tels quels par l'interface).
 pub const ERR_NOT_CONNECTED: &str = "Tapis non connecté";
@@ -133,8 +127,6 @@ pub struct Model {
     name: Option<String>,
     id: Option<String>,
     article: Option<String>,
-    /// Plafond en 0,1 km/h (la valeur publiée en est dérivée).
-    speed_cap: u16,
     last_distance: Option<u32>,
     elapsed: Duration,
     last_tick: Option<Instant>,
@@ -146,7 +138,7 @@ pub struct Model {
     start_sequence: bool,
 }
 
-/// Consignes à envoyer pour le profil (brutes, déjà bornées et plafonnées) ;
+/// Consignes à envoyer pour le profil (brutes, déjà bornées aux limites du tapis) ;
 /// `None` = déjà en place sur le tapis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProfileOrder {
@@ -162,12 +154,8 @@ impl Default for Model {
 
 impl Model {
     pub fn new() -> Self {
-        let speed_cap = (DEFAULT_SPEED_CAP_KMH * 10.0).round() as u16;
         Model {
-            snap: TreadmillSnapshot {
-                speed_cap_kmh: tenths(speed_cap),
-                ..TreadmillSnapshot::default()
-            },
+            snap: TreadmillSnapshot::default(),
             speed_min: None,
             speed_max: None,
             incline_min: None,
@@ -175,7 +163,6 @@ impl Model {
             name: None,
             id: None,
             article: None,
-            speed_cap,
             last_distance: None,
             elapsed: Duration::ZERO,
             last_tick: None,
@@ -240,13 +227,11 @@ impl Model {
     }
 
     /// Déconnexion voulue (ou échec de connexion) : on oublie les valeurs
-    /// lues, mais on garde le plafond, le temps de course et la dernière
-    /// distance (pour détecter une remise à zéro à la reconnexion).
+    /// lues, mais on garde le temps de course et la dernière distance (pour
+    /// détecter une remise à zéro à la reconnexion).
     pub fn on_disconnected(&mut self) {
-        let speed_cap_kmh = self.snap.speed_cap_kmh;
         let last_error = self.snap.last_error.take();
         self.snap = TreadmillSnapshot {
-            speed_cap_kmh,
             last_error,
             ..TreadmillSnapshot::default()
         };
@@ -459,20 +444,15 @@ impl Model {
         }
     }
 
-    /// Vitesse maximale autorisée (0,1 km/h) : min(plafond, SpeedMax).
-    fn speed_ceiling(&self, speed_max: u16) -> u16 {
-        self.speed_cap.min(speed_max)
-    }
-
     /// Consigne de vitesse brute (0,1 km/h) à écrire : arrondie, bornée à
-    /// `[SpeedMin, min(plafond, SpeedMax)]`. Refusée si la bande ne tourne pas.
+    /// `[SpeedMin, SpeedMax]`. Refusée si la bande ne tourne pas.
     pub fn speed_command(&self, kmh: f32) -> Result<u16, String> {
         self.ensure_running()?;
         let wanted = to_tenths(kmh).ok_or(ERR_INVALID_NUMBER)?;
         let (Some(min), Some(max)) = (self.speed_min, self.speed_max) else {
             return Err(ERR_LIMITS_UNKNOWN.into());
         };
-        let hi = i64::from(self.speed_ceiling(max));
+        let hi = i64::from(max);
         let lo = i64::from(min).min(hi);
         Ok(wanted.clamp(lo, hi) as u16)
     }
@@ -487,33 +467,6 @@ impl Model {
         };
         let lo = i64::from(min.min(max));
         Ok(wanted.clamp(lo, i64::from(max)) as u16)
-    }
-
-    /// Règle le plafond (arrondi à 0,1, borné à 1–20 km/h). Rend la consigne
-    /// brute à écrire si la consigne courante dépasse le nouveau plafond et que
-    /// la bande tourne (on ne fait que RALENTIR dans ce cas).
-    pub fn set_speed_cap(&mut self, kmh: f32) -> Result<Option<u16>, String> {
-        let wanted = to_tenths(kmh).ok_or(ERR_INVALID_NUMBER)?;
-        let lo = to_tenths(SPEED_CAP_MIN_KMH).unwrap_or(10);
-        let hi = to_tenths(SPEED_CAP_MAX_KMH).unwrap_or(200);
-        self.speed_cap = wanted.clamp(lo, hi) as u16;
-        self.snap.speed_cap_kmh = tenths(self.speed_cap);
-
-        if self.ensure_running().is_err() {
-            return Ok(None);
-        }
-        let Some(target) = self.snap.target_speed_kmh.and_then(to_tenths) else {
-            return Ok(None);
-        };
-        let ceiling = i64::from(match self.speed_max {
-            Some(max) => self.speed_ceiling(max),
-            None => self.speed_cap,
-        });
-        if target > ceiling {
-            Ok(Some(ceiling as u16))
-        } else {
-            Ok(None)
-        }
     }
 }
 
@@ -666,25 +619,25 @@ mod tests {
     }
 
     #[test]
-    fn vitesse_arrondie_bornee_plafonnee() {
+    fn vitesse_arrondie_et_bornee() {
         let m = running_model();
         assert_eq!(m.speed_command(2.54), Ok(25));
         assert_eq!(m.speed_command(2.56), Ok(26));
         // Sous le minimum du tapis : ramenée à 0,8 km/h.
         assert_eq!(m.speed_command(0.0), Ok(8));
         assert_eq!(m.speed_command(-3.0), Ok(8));
-        // Au-dessus du plafond par défaut (6,0) : ramenée au plafond.
-        assert_eq!(m.speed_command(12.0), Ok(60));
+        // Au-dessus du maximum du tapis : ramenée à 20,0 km/h.
+        assert_eq!(m.speed_command(12.0), Ok(120));
+        assert_eq!(m.speed_command(25.0), Ok(200));
         assert!(m.speed_command(f32::NAN).is_err());
         assert!(m.speed_command(f32::INFINITY).is_err());
     }
 
     #[test]
-    fn plafond_et_speed_max() {
+    fn vitesse_max_annoncee_par_le_tapis() {
         let mut m = running_model();
         m.apply(Reading::SpeedMax(50)); // tapis bridé à 5,0 km/h
-        m.set_speed_cap(20.0).unwrap();
-        assert_eq!(m.speed_command(18.0), Ok(50), "min(plafond, SpeedMax)");
+        assert_eq!(m.speed_command(18.0), Ok(50));
     }
 
     #[test]
@@ -735,34 +688,6 @@ mod tests {
         assert_eq!(m.check_start(), Ok(()));
         m.apply(Reading::Online(0));
         assert_eq!(m.check_start(), Err(ERR_ALREADY_RUNNING.into()));
-    }
-
-    #[test]
-    fn reglage_du_plafond() {
-        let mut m = Model::new();
-        assert!(approx(Some(m.snapshot().speed_cap_kmh), 6.0));
-        assert_eq!(m.set_speed_cap(0.2), Ok(None));
-        assert!(approx(Some(m.snapshot().speed_cap_kmh), 1.0));
-        assert_eq!(m.set_speed_cap(35.0), Ok(None));
-        assert!(approx(Some(m.snapshot().speed_cap_kmh), 20.0));
-        assert_eq!(m.set_speed_cap(4.26), Ok(None));
-        assert!(approx(Some(m.snapshot().speed_cap_kmh), 4.3));
-        assert!(m.set_speed_cap(f32::NAN).is_err());
-        assert!(approx(Some(m.snapshot().speed_cap_kmh), 4.3), "inchangé");
-    }
-
-    #[test]
-    fn plafond_sous_la_consigne_courante() {
-        let mut m = running_model();
-        m.apply(Reading::SpeedSet(50));
-        assert_eq!(m.set_speed_cap(3.0), Ok(Some(30)), "consigne ramenée");
-        assert_eq!(m.set_speed_cap(8.0), Ok(None), "remonter ne touche à rien");
-
-        // Bande arrêtée : on règle le plafond sans rien écrire.
-        let mut m = running_model();
-        m.apply(Reading::SpeedSet(50));
-        m.apply(Reading::Online(1));
-        assert_eq!(m.set_speed_cap(3.0), Ok(None));
     }
 
     #[test]
@@ -853,7 +778,6 @@ mod tests {
     #[test]
     fn deconnexion_voulue() {
         let mut m = running_model();
-        m.set_speed_cap(4.0).unwrap();
         m.apply(Reading::SpeedGet(30));
         m.on_link_lost();
         m.on_disconnected();
@@ -863,7 +787,6 @@ mod tests {
         assert_eq!(s.running, None);
         assert_eq!(s.speed_kmh, None);
         assert!(s.limits.is_none());
-        assert!(approx(Some(s.speed_cap_kmh), 4.0), "plafond conservé");
     }
 
     #[test]
@@ -907,17 +830,17 @@ mod tests {
     }
 
     #[test]
-    fn profil_borne_au_plafond_et_n_envoie_que_ce_qui_differe() {
+    fn profil_borne_a_la_vitesse_max_et_n_envoie_que_ce_qui_differe() {
         let t0 = Instant::now();
         let mut m = running_model();
-        m.set_speed_cap(5.0).unwrap();
+        m.apply(Reading::SpeedMax(50)); // tapis bridé à 5,0 km/h
         m.select_profile(Some(profil(&[(100, 8.0, 1.0)])));
         m.apply(Reading::SpeedSet(30));
         m.apply(Reading::InclineSet(10));
         assert_eq!(
             m.profile_order(t0),
             Some(ProfileOrder { speed: Some(50), incline: None }),
-            "plafonnée à 5,0 ; inclinaison déjà en place"
+            "bornée à 5,0 ; inclinaison déjà en place"
         );
         m.apply(Reading::SpeedSet(50));
         assert_eq!(m.profile_order(t0 + Duration::from_secs(1)), None, "relue");

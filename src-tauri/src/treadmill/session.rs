@@ -687,30 +687,6 @@ impl Treadmill {
         Ok(())
     }
 
-    /// Règle le plafond ; si la consigne courante le dépasse (bande en marche),
-    /// elle est ramenée au plafond (on ne fait que ralentir).
-    pub async fn set_speed_cap(&self, kmh: f32) -> Result<(), String> {
-        let guard = self.0.stop_gen.load(Ordering::SeqCst);
-        let lower = self.model().set_speed_cap(kmh);
-        let result = match lower {
-            Err(e) => Err(e),
-            Ok(None) => Ok(()),
-            Ok(Some(raw)) => {
-                let frame = write_u16_frame(ValueId::SpeedSet, raw);
-                match self.write_frame(&frame, Some(guard)).await {
-                    // Un stop est passé entre-temps : il prime, rien à abaisser.
-                    Ok(()) | Err(WriteError::CancelledByStop) => Ok(()),
-                    Err(e) => Err(format!(
-                        "Plafond enregistré, mais la consigne n'a pas pu être abaissée : {}",
-                        e.message()
-                    )),
-                }
-            }
-        };
-        self.update(|m| m.set_error(result.as_ref().err().cloned()));
-        result
-    }
-
     // ── Profils de course ───────────────────────────────────────────────────
 
     /// Profils de départ puis profils de l'utilisateur.
@@ -1273,11 +1249,11 @@ mod tests {
         until(&t, 5, "consigne relue", |s| s.target_speed_kmh == Some(3.0)).await;
         until(&t, 20, "vitesse atteinte", |s| s.speed_kmh.unwrap_or(0.0) >= 2.9).await;
 
-        // Plafond sous la consigne : la consigne est ramenée au plafond.
-        t.set_speed_cap(2.0).await.expect("plafond");
-        until(&t, 5, "consigne plafonnée", |s| s.target_speed_kmh == Some(2.0)).await;
-        assert!(t.set_target_speed(5.0).await.is_ok());
-        until(&t, 5, "consigne toujours plafonnée", |s| s.target_speed_kmh == Some(2.0)).await;
+        // Au-dessus du maximum du tapis : bornée à 20,0 km/h.
+        t.set_target_speed(25.0).await.expect("consigne bornée");
+        until(&t, 5, "consigne bornée relue", |s| s.target_speed_kmh == Some(20.0)).await;
+        t.set_target_speed(3.0).await.expect("retour à 3,0");
+        until(&t, 5, "consigne relue", |s| s.target_speed_kmh == Some(3.0)).await;
 
         t.set_target_incline(2.0).await.expect("inclinaison");
         until(&t, 15, "inclinaison atteinte", |s| s.incline_pct == Some(2.0)).await;

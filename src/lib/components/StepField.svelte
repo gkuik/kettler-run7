@@ -15,14 +15,12 @@
     label: string;
     unit: string;
     error?: string;
-    /** Avertissement (au-dessus du plafond…), sans bloquer l'enregistrement. */
-    warning?: string;
     disabled?: boolean;
     onchange: (value: number) => void;
     onfocus?: () => void;
   }
 
-  let { value, step, min, max, digits, label, unit, error, warning, disabled = false, onchange, onfocus }: Props =
+  let { value, step, min, max, digits, label, unit, error, disabled = false, onchange, onfocus }: Props =
     $props();
 
   const format = (v: number) => (Number.isFinite(v) ? decimal(v, digits) : "");
@@ -48,7 +46,7 @@
   }
 </script>
 
-<div class="field" class:error={!!error} class:warning={!error && !!warning} title={error ?? warning ?? ""}>
+<div class="field" class:error={!!error} title={error ?? ""}>
   <button
     type="button"
     class="kr-btn step"
@@ -102,10 +100,6 @@
 
   .field:focus-within {
     border-color: var(--kr-accent);
-  }
-
-  .field.warning {
-    border-color: var(--kr-warn);
   }
 
   .field.error {
