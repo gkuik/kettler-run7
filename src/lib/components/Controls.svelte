@@ -1,6 +1,6 @@
 <script lang="ts">
   // Réglages de la colonne de droite : vitesse (pas et préréglages), inclinaison,
-  // plafond, rappel des raccourcis. Boutons désactivés quand la commande n'aurait
+  // rappel des raccourcis. Boutons désactivés quand la commande n'aurait
   // pas de sens (non connecté, bande arrêtée, compte à rebours, consigne déjà en
   // butée…) ; le Rust reste seul juge : il borne et refuse lui-même.
   //
@@ -8,9 +8,7 @@
   // manque (bandeaux d'alerte) : rien ne défile à 900×680.
   import { api } from "../api";
   import {
-    clampCap,
     inclineStepUseful,
-    isConnected,
     nextIncline,
     nextSpeed,
     presetAllowed,
@@ -23,11 +21,8 @@
   const SPEED_STEPS = [-0.5, -0.1, 0.1, 0.5];
   const PRESETS = [3, 4, 5, 6];
   const INCLINE_STEPS = [-0.5, 0.5];
-  const CAP_STEP = 0.5;
 
   const snap = $derived(treadmill.snap);
-  const cap = $derived(snap.speedCapKmh);
-  const linked = $derived(isConnected(snap));
 
   const abs = (d: number) => decimal(Math.abs(d), 1);
   const signed = (d: number) => (d > 0 ? "+" : "−") + abs(d);
@@ -40,9 +35,6 @@
   }
   function inclineStep(d: number) {
     void treadmill.run(() => api.setTargetIncline(nextIncline(snap, d)));
-  }
-  function capStep(d: number) {
-    void treadmill.run(() => api.setSpeedCap(clampCap(cap + d)));
   }
 </script>
 
@@ -103,48 +95,6 @@
     </div>
   </div>
 
-  <div class="group">
-    <div class="head">
-      <svg
-        class="lock"
-        width="14"
-        height="14"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.4"
-        stroke-linecap="round"
-        aria-hidden="true"
-      >
-        <rect x="5" y="11" width="14" height="9" rx="2"></rect>
-        <path d="M8 11V8a4 4 0 0 1 8 0v3"></path>
-      </svg>
-      <span class="kr-label">Plafond</span>
-      <span class="kr-unit">km/h</span>
-    </div>
-    <div class="row cap">
-      <button
-        type="button"
-        class="kr-btn sign"
-        disabled={!linked || clampCap(cap - CAP_STEP) === cap}
-        aria-label={`Baisser le plafond de ${abs(CAP_STEP)} km/h`}
-        onclick={() => capStep(-CAP_STEP)}
-      >
-        −
-      </button>
-      <output class="cap-value" aria-label="Plafond de vitesse en km/h">{formatTenths(cap)}</output>
-      <button
-        type="button"
-        class="kr-btn sign"
-        disabled={!linked || clampCap(cap + CAP_STEP) === cap}
-        aria-label={`Monter le plafond de ${abs(CAP_STEP)} km/h`}
-        onclick={() => capStep(CAP_STEP)}
-      >
-        +
-      </button>
-    </div>
-  </div>
-
   <div class="keys">
     <kbd>Échap</kbd>
     <span>ou</span>
@@ -166,8 +116,7 @@
     border-radius: var(--kr-r-lg);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: var(--kr-sp-3);
+    gap: var(--kr-sp-4);
     /* Filet de sécurité sous 900×680 (fenêtre minimale 600×520). */
     overflow: hidden auto;
   }
@@ -187,11 +136,6 @@
     gap: var(--kr-sp-2);
   }
 
-  .lock {
-    align-self: center;
-    color: var(--kr-text-3);
-  }
-
   .row {
     flex: 0 1 var(--kr-btn-h);
     min-height: 40px;
@@ -207,11 +151,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .cap {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr);
-    align-items: stretch;
-  }
-
   .preset {
     font-size: calc(var(--kr-fs-btn) * 1.15);
   }
@@ -223,21 +162,9 @@
     border-color: var(--kr-accent);
   }
 
-  .sign {
-    font-size: calc(var(--kr-fs-btn) * 1.3);
-  }
-
-  .cap-value {
-    align-self: center;
-    text-align: center;
-    font-family: var(--kr-font-num);
-    font-weight: 600;
-    font-size: calc(var(--kr-fs-btn) * 1.45);
-    font-variant-numeric: tabular-nums;
-    color: var(--kr-text);
-  }
-
+  /* Rappel des raccourcis calé en bas de la carte. */
   .keys {
+    margin-top: auto;
     flex-shrink: 0;
     display: flex;
     flex-wrap: wrap;
@@ -249,7 +176,7 @@
   }
 
   /* Bandeaux empilés : les commandes passent avant le rappel des raccourcis. */
-  @container (max-height: 326px) {
+  @container (max-height: 250px) {
     .keys {
       display: none;
     }

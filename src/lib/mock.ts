@@ -14,13 +14,21 @@
 // - perte de liaison : la bande CONTINUE de tourner, reconnexion toutes les 2 s ;
 //   un `stop` demandé entre-temps est mémorisé et part à la reconnexion ;
 // - `stop` impossible (non connecté, écriture ratée) : promesse rejetée avec
-//   « Arrêt NON envoyé… ».
+//   « Arrêt NON envoyé… » ;
+// - profils de course : profils de départ + profils créés (en mémoire), et
+//   déroulement du profil choisi (`ProfileRunner`, miroir simplifié du Rust).
 //
 // La « physique » (la bande) tourne en permanence, connectée ou non : seul
 // l'instantané envoyé à l'interface dépend de la liaison.
 
-import { clampCap } from "./controls";
-import { emptySnapshot, type DeviceInfo, type Limits, type TreadmillSnapshot } from "./types";
+import { ProfileRunner, cloneProfile, profileError, starterProfiles } from "./profiles";
+import {
+  emptySnapshot,
+  type DeviceInfo,
+  type Limits,
+  type RunProfile,
+  type TreadmillSnapshot,
+} from "./types";
 
 export interface MockOptions {
   /** Petites oscillations de la vitesse réelle autour de la consigne (défaut : oui). */
@@ -42,6 +50,8 @@ const RAMP_DOWN_KMH_S = 0.4;
 const INCLINE_PCT_S = 0.3;
 const DISTANCE_REPORT_S = 3;
 const RECONNECT_RETRY_MS = 2000;
+const MSG_PROFILE_RUNNING =
+  "La bande tourne : mettez-la en pause pour changer de profil ou le modifier.";
 
 /** Rapproche `from` de `to` d'au plus `step`. */
 function approach(from: number, to: number, step: number): number {
@@ -77,6 +87,11 @@ export class MockTreadmill {
   private pendingStop = false;
   /** Outil de simulation : le prochain `stop` échoue (écriture BLE ratée). */
   private failNextStop = false;
+
+  // ── Profils de course ──
+  private userProfiles: RunProfile[] = [];
+  private runner: ProfileRunner | null = null;
+  private nextProfileId = 1;
 
   constructor(options: MockOptions = {}) {
     this.opts = { jitter: true, scanMs: 1500, connectMs: 1200, tickMs: 500, ...options };
@@ -125,8 +140,7 @@ export class MockTreadmill {
     this.pendingStop = false;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
-    const cap = this.snap.speedCapKmh;
-    this.snap = { ...emptySnapshot(), speedCapKmh: cap };
+    this.snap = emptySnapshot();
     this.emit();
   }
 
@@ -169,7 +183,9 @@ export class MockTreadmill {
     if (this.belt) {
       this.belt = false;
       this.countdownS = 0;
+      this.runner?.onStopped();
     } else {
+      this.runner?.restart();
       // Second arrêt, bande déjà arrêtée : le tapis remet ses compteurs à zéro.
       // (Le Rust remet alors son temps à zéro en voyant la distance redescendre.)
       this.distance = 0;
@@ -183,10 +199,12 @@ export class MockTreadmill {
   async setTargetSpeed(kmh: number): Promise<void> {
     this.requireRunning();
     if (!Number.isFinite(kmh)) throw this.fail("Vitesse invalide");
-    const max = Math.min(this.snap.speedCapKmh, LIMITS.speedMaxKmh);
-    const v = tenth(Math.min(max, Math.max(LIMITS.speedMinKmh, tenth(kmh))));
+    const v = tenth(Math.min(LIMITS.speedMaxKmh, Math.max(LIMITS.speedMinKmh, tenth(kmh))));
     // Pendant le compte à rebours, le tapis ignore les écritures.
-    if (this.countdownS <= 0) this.target = v;
+    if (this.countdownS <= 0) {
+      this.target = v;
+      this.runner?.onManual();
+    }
     this.ok();
   }
 
@@ -194,17 +212,79 @@ export class MockTreadmill {
     this.requireRunning();
     if (!Number.isFinite(pct)) throw this.fail("Inclinaison invalide");
     const v = tenth(Math.min(LIMITS.inclineMaxPct, Math.max(LIMITS.inclineMinPct, tenth(pct))));
-    if (this.countdownS <= 0) this.targetIncline = v;
+    if (this.countdownS <= 0) {
+      this.targetIncline = v;
+      this.runner?.onManual();
+    }
     this.ok();
   }
 
-  async setSpeedCap(kmh: number): Promise<void> {
-    if (!Number.isFinite(kmh)) throw this.fail("Plafond invalide");
-    const cap = clampCap(kmh);
-    this.snap.speedCapKmh = cap;
-    // Plafond sous la consigne courante : la consigne est ramenée au plafond.
-    if (this.target > cap && this.snap.connection === "connected") this.target = cap;
-    this.ok();
+  // ── Profils de course ─────────────────────────────────────────────────────
+
+  async listProfiles(): Promise<RunProfile[]> {
+    const user = this.userProfiles
+      .map(cloneProfile)
+      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+    return [...starterProfiles(), ...user];
+  }
+
+  async saveProfile(profile: RunProfile): Promise<RunProfile> {
+    const error = profileError(profile);
+    if (error) throw error;
+    if (starterProfiles().some((p) => p.id === profile.id)) {
+      throw "Profil de départ en lecture seule : dupliquez-le pour le modifier.";
+    }
+    if (profile.id) this.ensureProfileEditable(profile.id);
+    const saved: RunProfile = {
+      ...cloneProfile(profile),
+      name: profile.name.trim(),
+      builtin: false,
+      segments: profile.segments.map((s) => ({
+        distanceM: s.distanceM,
+        speedKmh: tenth(s.speedKmh),
+        inclinePct: tenth(s.inclinePct),
+      })),
+    };
+    if (!saved.id) {
+      saved.id = `p${this.nextProfileId++}`;
+      this.userProfiles.push(saved);
+    } else {
+      const i = this.userProfiles.findIndex((p) => p.id === saved.id);
+      if (i < 0) throw "Profil introuvable.";
+      this.userProfiles[i] = saved;
+    }
+    if (this.runner?.profile.id === saved.id) this.runner.replace(cloneProfile(saved));
+    this.emit();
+    return cloneProfile(saved);
+  }
+
+  async deleteProfile(id: string): Promise<void> {
+    if (starterProfiles().some((p) => p.id === id)) {
+      throw "Les profils de départ ne peuvent pas être supprimés.";
+    }
+    this.ensureProfileEditable(id);
+    const before = this.userProfiles.length;
+    this.userProfiles = this.userProfiles.filter((p) => p.id !== id);
+    if (this.userProfiles.length === before) throw "Profil introuvable.";
+    if (this.runner?.profile.id === id) this.runner = null;
+    this.emit();
+  }
+
+  async selectProfile(id: string | null): Promise<void> {
+    if (id === null) {
+      this.runner = null;
+    } else {
+      if (this.belt && this.runner?.profile.id !== id) throw MSG_PROFILE_RUNNING;
+      const p = (await this.listProfiles()).find((x) => x.id === id);
+      if (!p) throw "Profil introuvable.";
+      if (this.runner?.profile.id === id) this.runner.replace(p);
+      else this.runner = new ProfileRunner(p);
+    }
+    this.emit();
+  }
+
+  private ensureProfileEditable(id: string): void {
+    if (this.belt && this.runner?.profile.id === id) throw MSG_PROFILE_RUNNING;
   }
 
   // ── Outils de simulation (exposés en mode navigateur) ─────────────────────
@@ -231,6 +311,7 @@ export class MockTreadmill {
 
   /** Retrait de la clé : la bande s'arrête net et le module BLE est coupé. */
   pullSafetyKey(): void {
+    this.runner?.onStopped();
     this.belt = false;
     this.countdownS = 0;
     this.target = 0;
@@ -278,12 +359,26 @@ export class MockTreadmill {
     if (this.sinceDistanceReport >= DISTANCE_REPORT_S - 1e-6) {
       this.sinceDistanceReport = 0;
       this.distanceReported = Math.floor(this.distance);
+      if (this.snap.connection === "connected") this.runner?.onDistance(this.distanceReported);
     }
+    this.driveProfile();
 
     if (this.snap.connection === "connected") {
       this.refresh();
       this.emit();
     }
+  }
+
+  /** Comme le Rust : consignes du segment envoyées à chaque changement de segment. */
+  private driveProfile(): void {
+    if (!this.runner || this.snap.connection !== "connected") return;
+    if (!this.belt || this.countdownS > 0) return;
+    const wanted = this.runner.step();
+    if (!wanted) return;
+    this.target = tenth(Math.min(LIMITS.speedMaxKmh, Math.max(LIMITS.speedMinKmh, wanted.speedKmh)));
+    this.targetIncline = tenth(
+      Math.min(LIMITS.inclineMaxPct, Math.max(LIMITS.inclineMinPct, wanted.inclinePct)),
+    );
   }
 
   /** Recopie la physique dans l'instantané (ce qu'un polling lirait). */
@@ -353,6 +448,7 @@ export class MockTreadmill {
       ...s,
       limits: s.limits ? { ...s.limits } : null,
       device: s.device ? { ...s.device } : null,
+      profile: this.runner ? this.runner.progress() : null,
     };
   }
 

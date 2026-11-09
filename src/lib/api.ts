@@ -1,7 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { MockTreadmill } from "./mock";
-import { EVENT_STATE, type SimAction, type SimStatus, type TreadmillSnapshot } from "./types";
+import {
+  EVENT_STATE,
+  type RunProfile,
+  type SimAction,
+  type SimStatus,
+  type TreadmillSnapshot,
+} from "./types";
 
 // ── Point d'accès UNIQUE au backend Rust ──────────────────────────────────
 // Aucun composant n'appelle `invoke` directement : tout passe par ici.
@@ -43,7 +49,7 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> 
   }
 }
 
-/** Les 8 commandes du contrat (+ les 2 du simulateur) (CLAUDE.md, « Contrat frontend ↔ Rust »). */
+/** Les commandes du contrat (CLAUDE.md, « Contrat frontend ↔ Rust »). */
 export const api = {
   getState: (): Promise<TreadmillSnapshot> =>
     inTauri ? call<TreadmillSnapshot>("get_state") : mock().getState(),
@@ -56,8 +62,18 @@ export const api = {
     inTauri ? call<void>("set_target_speed", { kmh }) : mock().setTargetSpeed(kmh),
   setTargetIncline: (pct: number): Promise<void> =>
     inTauri ? call<void>("set_target_incline", { pct }) : mock().setTargetIncline(pct),
-  setSpeedCap: (kmh: number): Promise<void> =>
-    inTauri ? call<void>("set_speed_cap", { kmh }) : mock().setSpeedCap(kmh),
+
+  /** Profils de départ puis profils de l'utilisateur. */
+  listProfiles: (): Promise<RunProfile[]> =>
+    inTauri ? call<RunProfile[]>("list_profiles") : mock().listProfiles(),
+  /** Enregistre (crée si `id` est vide) ; rend le profil tel qu'enregistré. */
+  saveProfile: (profile: RunProfile): Promise<RunProfile> =>
+    inTauri ? call<RunProfile>("save_profile", { profile }) : mock().saveProfile(profile),
+  deleteProfile: (id: string): Promise<void> =>
+    inTauri ? call<void>("delete_profile", { id }) : mock().deleteProfile(id),
+  /** Profil déroulé pendant la séance ; `null` : aucun. */
+  selectProfile: (id: string | null): Promise<void> =>
+    inTauri ? call<void>("select_profile", { id }) : mock().selectProfile(id),
 
   /** Tapis simulé côté Rust (application lancée avec KETTLER_SIM=1). */
   sim: {

@@ -69,7 +69,7 @@ describe("règles du contrat", () => {
     await connect();
     await tm.setTargetSpeed(3).catch(() => {});
     expect((await tm.getState()).lastError).not.toBeNull();
-    await tm.setSpeedCap(6);
+    await tm.start();
     expect((await tm.getState()).lastError).toBeNull();
   });
 
@@ -89,29 +89,19 @@ describe("règles du contrat", () => {
     expect(s.speedKmh).toBeCloseTo(0.8, 5);
   });
 
-  it("borne la consigne au plafond et suit une rampe de ~0,2 km/h/s", async () => {
+  it("borne la consigne à la vitesse max et suit une rampe de ~0,2 km/h/s", async () => {
     await connect();
     await startAndWaitBelt();
+    await tm.setTargetSpeed(25);
+    expect((await tm.getState()).targetSpeedKmh).toBe(20);
     await tm.setTargetSpeed(9);
-    expect((await tm.getState()).targetSpeedKmh).toBe(6);
+    expect((await tm.getState()).targetSpeedKmh).toBe(9);
     await tm.setTargetSpeed(2.84);
     expect((await tm.getState()).targetSpeedKmh).toBe(2.8);
     await advance(5);
     expect((await tm.getState()).speedKmh).toBeCloseTo(1.8, 5);
     await advance(10);
     expect((await tm.getState()).speedKmh).toBeCloseTo(2.8, 5);
-  });
-
-  it("ramène la consigne quand le plafond descend dessous", async () => {
-    await connect();
-    await startAndWaitBelt();
-    await tm.setTargetSpeed(5);
-    await tm.setSpeedCap(4);
-    const s = await tm.getState();
-    expect(s.speedCapKmh).toBe(4);
-    expect(s.targetSpeedKmh).toBe(4);
-    await tm.setSpeedCap(0.2);
-    expect((await tm.getState()).speedCapKmh).toBe(1);
   });
 
   it("incline à ~0,3 %/s dans les limites du tapis", async () => {
@@ -206,5 +196,62 @@ describe("incidents", () => {
     expect(s.connection).toBe("connected");
     expect(s.running).toBe(false);
     expect(s.speedKmh).toBe(0);
+  });
+});
+
+describe("profils de course", () => {
+  it("liste les profils de départ et enregistre un profil", async () => {
+    const before = await tm.listProfiles();
+    expect(before.filter((p) => p.builtin)).toHaveLength(3);
+    const saved = await tm.saveProfile({
+      id: "",
+      name: " Matin ",
+      builtin: false,
+      segments: [{ distanceM: 100, speedKmh: 3.04, inclinePct: 0 }],
+    });
+    expect(saved.id).not.toBe("");
+    expect(saved.name).toBe("Matin");
+    expect(saved.segments[0].speedKmh).toBe(3);
+    expect(await tm.listProfiles()).toHaveLength(4);
+    await expect(tm.saveProfile({ ...before[0] })).rejects.toMatch(/lecture seule/);
+    await expect(tm.deleteProfile(before[0].id)).rejects.toMatch(/départ/);
+  });
+
+  it("déroule le profil choisi pendant la séance", async () => {
+    const saved = await tm.saveProfile({
+      id: "",
+      name: "Essai",
+      builtin: false,
+      segments: [
+        { distanceM: 50, speedKmh: 4, inclinePct: 2 },
+        { distanceM: 50, speedKmh: 5, inclinePct: 0 },
+      ],
+    });
+    await tm.selectProfile(saved.id);
+    expect((await tm.getState()).profile?.segmentIndex).toBe(0);
+    await connect();
+    await startAndWaitBelt();
+    await advance(1);
+    let s = await tm.getState();
+    expect(s.targetSpeedKmh).toBe(4);
+    expect(s.targetInclinePct).toBe(2);
+    await expect(tm.selectProfile(null)).resolves.toBeUndefined();
+    await tm.selectProfile(saved.id).catch(() => {});
+    await tm.stop();
+    await advance(10);
+    await tm.selectProfile(saved.id);
+    await tm.start();
+    await advance(60);
+    s = await tm.getState();
+    expect(s.profile?.segmentIndex).toBeGreaterThanOrEqual(1);
+    expect(s.targetSpeedKmh).toBe(5);
+  });
+
+  it("refuse de changer de profil bande en marche", async () => {
+    const [a, b] = await tm.listProfiles();
+    await tm.selectProfile(a.id);
+    await connect();
+    await startAndWaitBelt();
+    await expect(tm.selectProfile(b.id)).rejects.toMatch(/mettez-la en pause/);
   });
 });

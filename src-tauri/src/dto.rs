@@ -73,10 +73,58 @@ pub struct TreadmillSnapshot {
     pub elapsed_s: u32,
     pub limits: Option<Limits>,
     pub device: Option<DeviceInfo>,
-    /// Plafond de vitesse appliqué par l'application à toute consigne envoyée.
-    pub speed_cap_kmh: f32,
     /// Dernière erreur lisible (connexion, commande refusée…), effacée au succès suivant.
     pub last_error: Option<String>,
+    /// Profil de course choisi et sa progression ; `None` = pas de profil.
+    pub profile: Option<ProfileProgress>,
+}
+
+// ── Profils de course ───────────────────────────────────────────────────────
+
+/// Un segment de profil : sur `distance_m` mètres, telle vitesse et telle inclinaison.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileSegment {
+    pub distance_m: u32,
+    pub speed_kmh: f32,
+    pub incline_pct: f32,
+}
+
+/// Profil de course : suite de segments parcourus dans l'ordre.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunProfile {
+    /// Identifiant stable ; vide à l'enregistrement d'un nouveau profil.
+    pub id: String,
+    pub name: String,
+    /// Profil de départ fourni par l'application : lecture seule (à dupliquer).
+    #[serde(default)]
+    pub builtin: bool,
+    pub segments: Vec<ProfileSegment>,
+}
+
+/// Où en est le profil choisi (calculé par le Rust, qui seul le déroule).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileProgress {
+    pub profile_id: String,
+    pub profile_name: String,
+    pub segment_count: u32,
+    /// Segment en cours (0…). Vaut `segment_count` une fois le profil terminé.
+    pub segment_index: u32,
+    /// Distance parcourue depuis le début du profil (mètres).
+    pub done_m: u32,
+    pub total_m: u32,
+    /// Mètres restants dans le segment en cours (0 une fois terminé).
+    pub segment_remaining_m: u32,
+    /// Consignes du segment en cours (ou de la récupération une fois terminé).
+    pub current: ProfileSegment,
+    /// Segment suivant ; `None` pendant le dernier segment et après.
+    pub next: Option<ProfileSegment>,
+    /// Tous les segments parcourus : récupération lente, sans arrêt automatique.
+    pub finished: bool,
+    /// Consigne changée à la main : le profil reprend la main au segment suivant.
+    pub manual: bool,
 }
 
 // ── Simulateur (lancement avec KETTLER_SIM=1, voir `treadmill/sim.rs`) ──────

@@ -13,7 +13,9 @@ npm install                # une fois (.npmrc force legacy-peer-deps : npm 10 pl
 npm run app:dev            # lance l'appli (Vite :1430 puis Rust ; 1420 est pris par OpenGitClient) — À LANCER DANS LE TERMINAL INTÉGRÉ (Bluetooth)
 npm run app:sim            # même appli, tapis SIMULÉ (KETTLER_SIM=1) : aucun Bluetooth, marche aussi depuis Bash
 npm run check              # svelte-check (vite build ne vérifie pas les types)
-npm test                   # vitest
+npm test                   # cohérence des versions puis vitest
+npm run version:check      # affiche la version de chaque fichier, échoue s'ils diffèrent
+npm run version:set -- 0.3.0  # écrit la version partout (branche release/ ou hotfix/ seulement)
 npm run build              # frontend seul → dist/
 cd src-tauri && cargo test # tests Rust (protocole, logique d'état) — sans Bluetooth, OK depuis Bash
 ```
@@ -43,7 +45,7 @@ Hors Tauri (`npx vite` dans un navigateur), l'interface utilise à la place le t
 
 **Commentaires de code en français ; interface en français.**
 
-**Interface : desktop uniquement, design « Piste »** (fenêtre minimale 900×680). Sources du design dans [docs/design/](docs/design/) : `piste-tokens.dc.html` (direction, tokens) et `piste-console.dc.html` (console, tous les états). Tous les styles passent par les tokens `--kr-*` de `src/app.css` ; une couleur vive signifie toujours un état (vert démarrer, ambre pause, rouge stop et alertes, orange avertissement, bleu donnée). Polices Barlow et Barlow Semi Condensed embarquées via `@fontsource` : pas de Google Fonts, l'appli marche hors ligne. Non repris du design : courbe de vitesse et objectif (options facultatives).
+**Interface : desktop uniquement, design « Piste »** (fenêtre minimale 900×680). Sources du design dans [docs/design/](docs/design/) : `piste-tokens.dc.html` (direction, tokens) et `piste-console.dc.html` (console, tous les états). Tous les styles passent par les tokens `--kr-*` de `src/app.css` ; une couleur vive signifie toujours un état (vert démarrer, ambre pause, rouge stop et alertes, orange avertissement, bleu donnée). Polices Barlow et Barlow Semi Condensed embarquées via `@fontsource` : pas de Google Fonts, l'appli marche hors ligne. Non repris du design : courbe de vitesse et objectif (options facultatives), plafond de vitesse (retiré).
 
 ### Architecture
 
@@ -56,13 +58,16 @@ src-tauri/src/
   treadmill/session.rs session (btleplug ou simulateur) : scan, connexion, handshake, polling, écritures, reconnexion
   treadmill/state.rs   logique d'état pure (Model)
   treadmill/sim.rs     tapis simulé au niveau du protocole (KETTLER_SIM=1)
+  treadmill/profile.rs profils de course : profils de départ, validation, stockage (profiles.json), déroulement (ProfileRun)
   commands.rs          commandes Tauri (fines : délèguent à treadmill/)
 src/
   main.ts, App.svelte, app.css
   lib/types.ts         miroir TypeScript de dto.rs
   lib/api.ts           invoke/listen ; bascule sur un tapis simulé (lib/mock.ts) hors Tauri
   lib/sim.svelte.ts    mode simulateur (navigateur ou Rust) et état du tapis simulé
-  lib/components/      écran de pilotage
+  lib/profiles.ts      profils : bornes et validation (miroir de profile.rs), résumé, ProfileRunner (tapis simulé du navigateur)
+  lib/profiles.svelte.ts liste des profils, écran affiché (console / éditeur), profil en cours d'édition
+  lib/components/      écran de pilotage, éditeur de profils (ProfileEditor, ProfileChart, StepField), ProfilePanel, ProfileStrip
 ```
 
 **Le Rust possède tout l'état et toute la sécurité** ; le frontend affiche les `TreadmillSnapshot` reçus et appelle des commandes. Il ne parle jamais Bluetooth.
@@ -80,9 +85,12 @@ Commandes (toutes `async`, erreur = `String` lisible en français) :
 | `disconnect` | — | Déconnexion voulue : pas de reconnexion automatique |
 | `start` | — | Écrit Online = 0 (compte à rebours 3-2-1 puis 0,8 km/h) |
 | `stop` | — | Écrit Online = 1. **Prioritaire** : part immédiatement, avant toute écriture en attente, et est toujours accepté |
-| `set_target_speed` | `kmh: f32` | Arrondi à 0,1 ; borné à `[speed_min, min(speed_cap, speed_max)]` ; refusé si la bande ne tourne pas |
+| `set_target_speed` | `kmh: f32` | Arrondi à 0,1 ; borné à `[speed_min, speed_max]` (limites lues sur le tapis) ; refusé si la bande ne tourne pas |
 | `set_target_incline` | `pct: f32` | Arrondi à 0,1 ; borné aux limites du tapis ; refusé si la bande ne tourne pas |
-| `set_speed_cap` | `kmh: f32` | Plafond appliqué à toute consigne (1–20 km/h, défaut **6,0**). S'il descend sous la consigne courante, la consigne est ramenée au plafond |
+| `list_profiles` | — | Profils de départ (lecture seule) puis profils de l'utilisateur, par nom |
+| `save_profile` | `profile: RunProfile` | Valide et enregistre (crée si `id` est vide) ; rend le profil enregistré. Refusé pour un profil de départ, et pour le profil en cours bande en marche |
+| `delete_profile` | `id: String` | Supprime un profil de l'utilisateur (même refus) |
+| `select_profile` | `id: Option<String>` | Profil déroulé pendant la séance (gardé dans `profiles.json`). Un profil ne se choisit que bande arrêtée ; `null` (aucun) toujours accepté |
 | `sim_status` | — | `SimStatus` du tapis simulé, ou `null` avec le vrai tapis (sert aussi à détecter le mode simulateur) |
 | `sim_action` | `action: SimAction` | Événement sur le tapis simulé (`{ kind: "linkLoss", seconds }`…) ; refusé avec le vrai tapis |
 
@@ -91,6 +99,20 @@ Règles de la session :
 - `elapsed_s` : s'accumule tant que `running == Some(true)` ; remis à 0 quand la distance repart à une valeur inférieure à la précédente (compteur remis à zéro par le tapis).
 - Perte de liaison non voulue → `connection = Reconnecting`, `lost_while_running = (running == Some(true))`, nouvelle tentative toutes les 2 s jusqu'au succès ou à un `disconnect`. Au succès, `lost_while_running` repasse à faux.
 - Toute réponse avec un CRC invalide est ignorée (on attend le polling suivant).
+
+### Profils de course
+
+Un profil = une suite de segments (distance en m, vitesse, inclinaison). Stockés dans `profiles.json` (dossier de données de l'appli : `~/Library/Application Support/<identifiant>/`), avec le profil choisi ; un fichier illisible est renommé `.json.illisible`, jamais écrasé. Trois profils de départ en dur (`starter_profiles`, vitesses de marche ≤ 6,0 km/h), en lecture seule : on les duplique pour les adapter. Bornes d'un segment : 50–10 000 m, 0,8–20 km/h, 0–15 % ; 60 segments au plus. Le TS (`profiles.ts`) recopie bornes et messages pour l'éditeur ; le Rust revalide.
+
+Déroulement (choix de l'utilisateur, 2026-11-09), entièrement côté Rust (`ProfileRun` + `Model::profile_order`, appelé en fin de cycle de polling par `Treadmill::drive_profile`) :
+- Choisir un profil ne lance rien. Après « Démarrer », le 1er segment part à la fin du compte à rebours (consigne relue ≥ vitesse min).
+- La progression est la **somme des avancées** du compteur Distance, pas sa valeur : une remise à zéro pendant `Treadmill::start` (démarrage ignoré après une longue pause) ne fait pas reculer le profil. Une remise à zéro hors démarrage, ou un STOP envoyé bande déjà arrêtée (fin de séance), le ramène au début. Pause : progression gardée, consignes du segment renvoyées à la reprise.
+- Changement de segment : vitesse et inclinaison envoyées une fois (bornées aux limites du tapis comme toute consigne, seulement ce qui diffère), puis vérifiées à la relecture ; non relues en 5 s → renvoi, 3 envois au plus. Ensuite le profil ne touche plus à rien jusqu'au segment suivant : **un réglage manuel (appli ou console) vaut jusqu'à la fin du segment** (`manual` dans `ProfileProgress`).
+- Après le dernier segment : récupération lente, min(3,0 km/h, vitesse du dernier segment) et 0 %, **sans arrêt automatique**.
+- Les envois du profil passent par `write_frame` avec la garde `stop_gen` : un STOP les annule comme toute commande.
+- Interface : section « Profil » de la colonne de droite (liste, ✎ voir/modifier, + créer ; bande en marche : nom + « Sans profil ») ; bande `ProfileStrip` sous la vitesse (segment, mètres restants, aperçu, segment suivant annoncé en orange dans les derniers mètres : min(60 m, 40 % du segment)). **L'éditeur n'est accessible que bande arrêtée** (`canEditProfiles`) ; si la bande démarre, App.svelte revient d'office à la console (brouillon gardé, « reprendre » dans la section Profil).
+- Clavier dans l'éditeur : Échap envoie toujours l'arrêt ; **Espace dans un champ texte tape une espace** (seule exception à « Espace = arrêt », sûre car l'éditeur n'existe que bande arrêtée). En pause, Échap y termine donc la séance, comme sur la console.
+- À valider sur le vrai tapis : enchaînement des consignes vitesse + inclinaison au changement de segment (deux écritures de suite, chacune avec `WRITE_QUIET`).
 
 ## Git
 
@@ -105,10 +127,14 @@ Règles de la session :
 | `release/X.Y.Z` | Préparation d'une version (numéros de version, derniers correctifs), partie de `develop`, fusionnée dans `main` (tag `vX.Y.Z`) puis dans `develop` |
 | `hotfix/X.Y.Z` | Correction urgente d'une version publiée, partie de `main`, fusionnée dans `main` (tag) puis dans `develop` |
 
-- Noms de branches en minuscules, mots séparés par des tirets (`feature/plafond-vitesse`).
+- Noms de branches en minuscules, mots séparés par des tirets (`feature/profils-course`).
 - Merges en `--no-ff` pour garder la trace de chaque branche.
 - La configuration git flow est déjà dans `.git/config` (`gitflow.*`) : l'outil `git flow` (`brew install git-flow-avh`) peut s'en servir tel quel, mais il n'est pas obligatoire.
-- Numéro de version (SemVer) à changer en même temps dans `package.json`, `src-tauri/Cargo.toml` et `src-tauri/tauri.conf.json`, sur la branche `release/` ou `hotfix/`.
+- **Versionnement** (SemVer) : la version vit dans 5 fichiers (`package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, `src-tauri/tauri.conf.json`). Ne jamais l'éditer à la main : `npm run version:set -- X.Y.Z` (script `scripts/version.mjs`), sur la branche `release/` ou `hotfix/` seulement. `npm test` et `cargo test` (`version_identique_partout` dans `lib.rs`) échouent si les fichiers divergent.
+- La version est affichée dans l'en-tête de l'appli (`vX.Y.Z`, `src/lib/version.ts`, injectée depuis `package.json` par `vite.config.ts`) et écrite au lancement dans le journal du terminal (`Kettler RUN 7 vX.Y.Z`).
+- `CHANGELOG.md` : chaque changement notable va sous « Non publié » ; la branche `release/` renomme cette section en `[X.Y.Z] — date`.
+- Publier une version : `git checkout -b release/X.Y.Z develop`, `npm run version:set -- X.Y.Z`, CHANGELOG, commit `chore(release): X.Y.Z`, merge `--no-ff` dans `main`, tag annoté `vX.Y.Z`, merge `--no-ff` dans `develop`, puis `git push origin main develop vX.Y.Z`.
+- **Releases GitHub** (`.github/workflows/release.yml`, dépôt `github.com/gkuik/kettler-run7`) : le push d'un tag `vX.Y.Z` lance, sur un runner macOS, la vérification (tag = version des 5 fichiers, section `## [X.Y.Z]` présente dans CHANGELOG.md), `npm test`, `npm run check`, `cargo test`, puis `npm run app:build:universal`, et publie la release « Kettler RUN 7 X.Y.Z » avec `Kettler-RUN-7_X.Y.Z_macOS-universal.dmg`, l'`.app` zippée et `SHA256SUMS.txt`. Notes = section du CHANGELOG + consignes d'installation (`npm run release:notes -- X.Y.Z` pour les voir). Version avec suffixe (`1.0.0-beta.1`) → pré-release. Relance manuelle possible (Actions → Release → Run workflow, avec le tag) : remplace fichiers et notes. Application non signée par un développeur Apple (signature ad hoc).
 
 ### Messages de commit : Conventional Commits
 
@@ -131,7 +157,8 @@ Règles de la session :
 - Le tapis est une machine qui peut blesser. **Ne jamais envoyer d'écriture (démarrage, vitesse, inclinaison) sans l'accord explicite de l'utilisateur et sans quelqu'un à côté du tapis**, clé de sécurité en place.
 - Les lectures sont sans danger ; tout le reste demande l'accord.
 - Pendant un démarrage à distance, l'utilisateur doit rester sur les rebords latéraux, pas sur la bande.
-- Les scripts de test plafonnent leurs consignes (3,0 km/h, 3,0 %) et terminent toujours par un arrêt (dans un `finally`). Garder ce principe dans l'application : arrêt toujours accessible (bouton PAUSE/STOP dès qu'une séance est en cours ou que l'état est incertain, et Échap/Espace qui envoient TOUJOURS l'arrêt, quel que soit l'affichage), plafond de vitesse configurable, arrêt en cas de perte de connexion si possible.
+- Les scripts de test plafonnent leurs consignes (3,0 km/h, 3,0 %) et terminent toujours par un arrêt (dans un `finally`). Garder ce principe dans l'application : arrêt toujours accessible (bouton PAUSE/STOP dès qu'une séance est en cours ou que l'état est incertain, et Échap/Espace qui envoient TOUJOURS l'arrêt, quel que soit l'affichage), arrêt en cas de perte de connexion si possible.
+- **Pas de plafond de vitesse** : retiré à la demande de l'utilisateur (2026-11-09, jugé inutile). Les consignes sont seulement bornées aux limites annoncées par le tapis (SpeedMin/SpeedMax : 0,8–20 km/h). Ne pas le réintroduire sans demande de l'utilisateur.
 - Le bouton stop de la console et la clé de sécurité restent prioritaires sur le Bluetooth.
 
 ## Environnement macOS (important)

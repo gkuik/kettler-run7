@@ -22,6 +22,9 @@
 //! - La reconnexion n'écrit que le handshake et des lectures. Seule exception,
 //!   à la demande explicite de l'utilisateur : un STOP pressé pendant la coupure
 //!   est mémorisé et envoyé à la reconnexion si la bande tourne encore.
+//! - Profil de course : à chaque fin de cycle de polling, le modèle dit s'il
+//!   faut envoyer les consignes du segment en cours (`Model::profile_order`) ;
+//!   elles partent comme une commande, annulables par un stop.
 
 use std::collections::VecDeque;
 use std::pin::Pin;
@@ -40,11 +43,12 @@ use tokio::task::JoinHandle;
 use tokio::time::{sleep, sleep_until, timeout, Instant};
 use uuid::Uuid;
 
+use super::profile::ProfileLibrary;
 use super::sim::{SimPort, Simulator};
 use super::state::{
     decode, is_handshake_answer, is_treadmill_name, Model, FAST_IDS, SLOW_EVERY, SLOW_IDS,
 };
-use crate::dto::{ConnectionState, TreadmillSnapshot};
+use crate::dto::{ConnectionState, RunProfile, TreadmillSnapshot};
 use crate::kettler::protocol::{
     handshake_frame, read_frame, write_u16_frame, write_u8_frame, FrameDecoder, ValueId,
 };
@@ -100,6 +104,8 @@ const MSG_CANCELLED_BY_STOP: &str = "Commande annulée : un arrêt a été deman
 const MSG_STOP_DEFERRED: &str = "Arrêt NON envoyé : le tapis n'est pas connecté. Il sera envoyé \
      dès la reconnexion si la bande tourne encore. Utilisez le bouton stop de la console ou la \
      clé de sécurité.";
+const MSG_PROFILE_RUNNING: &str =
+    "La bande tourne : mettez-la en pause pour changer de profil ou le modifier.";
 const MSG_STOP_DISCONNECTED: &str = "Arrêt impossible : le tapis n'est pas connecté. Utilisez le \
      bouton stop de la console ou la clé de sécurité.";
 
@@ -220,6 +226,8 @@ struct Shared {
     /// Valeur à relire en priorité après une écriture, pour que l'écran
     /// confirme la commande sans attendre son tour dans le cycle de polling.
     priority_read: Mutex<Option<ValueId>>,
+    /// Profils de course (départ + utilisateur, fichier `profiles.json`).
+    library: Mutex<ProfileLibrary>,
     backend: Backend,
 }
 
@@ -322,14 +330,17 @@ async fn find_treadmill(adapter: &Adapter, limit: Duration) -> Result<Peripheral
 
 impl Treadmill {
     /// `sim` : tapis simulé à la place du Bluetooth (rien n'est alors ouvert en BLE).
-    pub fn new(emit: StateEmitter, sim: Option<Simulator>) -> Self {
+    /// `library` : profils de course ; le dernier profil choisi est repris.
+    pub fn new(emit: StateEmitter, sim: Option<Simulator>, library: ProfileLibrary) -> Self {
         let backend = match sim {
             Some(sim) => Backend::Sim(sim),
             None => Backend::Ble(OnceCell::new()),
         };
+        let mut model = Model::new();
+        model.select_profile(library.selected().and_then(|id| library.get(id)));
         Treadmill(Arc::new(Shared {
             emit,
-            model: Mutex::new(Model::new()),
+            model: Mutex::new(model),
             link: tokio::sync::Mutex::new(None),
             session: Mutex::new(None),
             next_gen: AtomicU64::new(0),
@@ -339,6 +350,7 @@ impl Treadmill {
             last_tx: Mutex::new(None),
             starting: AtomicBool::new(false),
             priority_read: Mutex::new(None),
+            library: Mutex::new(library),
             backend,
         }))
     }
@@ -356,6 +368,10 @@ impl Treadmill {
     /// Verrou du modèle ; un mutex empoisonné est récupéré plutôt que de paniquer.
     fn model(&self) -> MutexGuard<'_, Model> {
         self.0.model.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn library(&self) -> MutexGuard<'_, ProfileLibrary> {
+        self.0.library.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     fn session_slot(&self) -> MutexGuard<'_, Option<SessionHandle>> {
@@ -537,8 +553,18 @@ impl Treadmill {
         if self.0.starting.swap(true, Ordering::SeqCst) {
             return Err("Démarrage déjà en cours.".into());
         }
+        self.model().set_start_sequence(true);
         let r = self.start_sequence().await;
         self.0.starting.store(false, Ordering::SeqCst);
+        // La lecture de distance qui suit une remise à zéro peut arriver un peu
+        // après : on la laisse passer avant de lever le drapeau.
+        let this = self.clone();
+        tokio::spawn(async move {
+            sleep(POLL_PERIOD * 3).await;
+            if !this.0.starting.load(Ordering::SeqCst) {
+                this.model().set_start_sequence(false);
+            }
+        });
         r
     }
 
@@ -605,10 +631,20 @@ impl Treadmill {
         // D'abord invalider les écritures en attente, ensuite prendre le verrou.
         self.0.stop_gen.fetch_add(1, Ordering::SeqCst);
         let frame = write_u8_frame(ValueId::Online, 1);
+        // Bande déjà vue arrêtée : ce stop termine la séance (compteurs à zéro).
+        let ends_session = {
+            let m = self.model();
+            m.running() == Some(false) && m.snapshot().connection == ConnectionState::Connected
+        };
         match self.write_frame(&frame, None).await {
             Ok(()) => {
                 self.0.pending_stop.store(false, Ordering::SeqCst);
-                self.update(|m| m.set_error(None));
+                self.update(|m| {
+                    m.set_error(None);
+                    if ends_session {
+                        m.profile_session_ended();
+                    }
+                });
                 Ok(())
             }
             Err(e) => {
@@ -629,11 +665,16 @@ impl Treadmill {
         }
     }
 
+    /// Consigne de vitesse de l'utilisateur. Avec un profil, elle vaut jusqu'à
+    /// la fin du segment en cours.
     pub async fn set_target_speed(&self, kmh: f32) -> Result<(), String> {
         self.command_write(|m| Ok(write_u16_frame(ValueId::SpeedSet, m.speed_command(kmh)?)))
-            .await
+            .await?;
+        self.update(|m| m.profile_manual());
+        Ok(())
     }
 
+    /// Consigne d'inclinaison de l'utilisateur (même règle avec un profil).
     pub async fn set_target_incline(&self, pct: f32) -> Result<(), String> {
         self.command_write(|m| {
             Ok(write_u16_frame(
@@ -641,31 +682,108 @@ impl Treadmill {
                 m.incline_command(pct)?,
             ))
         })
-        .await
+        .await?;
+        self.update(|m| m.profile_manual());
+        Ok(())
     }
 
-    /// Règle le plafond ; si la consigne courante le dépasse (bande en marche),
-    /// elle est ramenée au plafond (on ne fait que ralentir).
-    pub async fn set_speed_cap(&self, kmh: f32) -> Result<(), String> {
-        let guard = self.0.stop_gen.load(Ordering::SeqCst);
-        let lower = self.model().set_speed_cap(kmh);
-        let result = match lower {
-            Err(e) => Err(e),
-            Ok(None) => Ok(()),
-            Ok(Some(raw)) => {
-                let frame = write_u16_frame(ValueId::SpeedSet, raw);
-                match self.write_frame(&frame, Some(guard)).await {
-                    // Un stop est passé entre-temps : il prime, rien à abaisser.
-                    Ok(()) | Err(WriteError::CancelledByStop) => Ok(()),
-                    Err(e) => Err(format!(
-                        "Plafond enregistré, mais la consigne n'a pas pu être abaissée : {}",
-                        e.message()
-                    )),
+    // ── Profils de course ───────────────────────────────────────────────────
+
+    /// Profils de départ puis profils de l'utilisateur.
+    pub fn profiles(&self) -> Vec<RunProfile> {
+        self.library().list()
+    }
+
+    /// Refuse de toucher au profil en cours tant que la bande tourne (ou démarre).
+    fn ensure_profile_editable(&self, id: &str) -> Result<(), String> {
+        let m = self.model();
+        let busy = m.running() == Some(true) || self.0.starting.load(Ordering::SeqCst);
+        if busy && m.profile_id() == Some(id) {
+            return Err(MSG_PROFILE_RUNNING.into());
+        }
+        Ok(())
+    }
+
+    /// Enregistre un profil (le crée si son `id` est vide). Le profil en cours,
+    /// modifié bande arrêtée, garde sa progression.
+    pub fn save_profile(&self, profile: RunProfile) -> Result<RunProfile, String> {
+        if !profile.id.is_empty() {
+            self.ensure_profile_editable(&profile.id)?;
+        }
+        let saved = self.library().save(&profile)?;
+        self.update(|m| {
+            if m.profile_id() == Some(saved.id.as_str()) {
+                m.select_profile(Some(saved.clone()));
+            }
+        });
+        Ok(saved)
+    }
+
+    pub fn delete_profile(&self, id: &str) -> Result<(), String> {
+        self.ensure_profile_editable(id)?;
+        self.library().delete(id)?;
+        self.update(|m| {
+            if m.profile_id() == Some(id) {
+                m.select_profile(None);
+            }
+        });
+        Ok(())
+    }
+
+    /// Choisit le profil à dérouler. Un profil ne se choisit que bande arrêtée ;
+    /// « aucun profil » est toujours accepté (les consignes restent telles quelles).
+    pub fn select_profile(&self, id: Option<String>) -> Result<(), String> {
+        let profile = match &id {
+            None => None,
+            Some(id) => {
+                let busy = self.model().running() == Some(true)
+                    || self.0.starting.load(Ordering::SeqCst);
+                if busy && self.model().profile_id() != Some(id.as_str()) {
+                    return Err(MSG_PROFILE_RUNNING.into());
                 }
+                Some(self.library().get(id).ok_or("Profil introuvable.")?)
             }
         };
-        self.update(|m| m.set_error(result.as_ref().err().cloned()));
-        result
+        // Le choix est gardé même si le fichier n'a pas pu être écrit.
+        let persisted = self.library().set_selected(id);
+        self.update(|m| m.select_profile(profile));
+        persisted
+    }
+
+    /// Envoie les consignes du profil si le modèle le demande (fin de cycle de
+    /// polling). Un stop arrivé entre-temps annule l'envoi.
+    async fn drive_profile(&self) {
+        let guard = self.0.stop_gen.load(Ordering::SeqCst);
+        let order = self.model().profile_order(Instant::now().into_std());
+        let Some(order) = order else {
+            return;
+        };
+        if let Some(p) = self.model().snapshot().profile {
+            eprintln!(
+                "{} [profil] « {} » segment {}/{} : vitesse {:?}, inclinaison {:?}",
+                t(),
+                p.profile_name,
+                (p.segment_index + 1).min(p.segment_count),
+                p.segment_count,
+                order.speed,
+                order.incline
+            );
+        }
+        let mut result = Ok(());
+        if let Some(raw) = order.speed {
+            result = self.write_frame(&write_u16_frame(ValueId::SpeedSet, raw), Some(guard)).await;
+        }
+        if let (Ok(()), Some(raw)) = (&result, order.incline) {
+            result = self.write_frame(&write_u16_frame(ValueId::InclineSet, raw), Some(guard)).await;
+        }
+        match result {
+            // Non relue, la consigne sera renvoyée (voir `ProfileRun::step`).
+            Ok(()) | Err(WriteError::CancelledByStop) => {}
+            Err(e) => {
+                let msg = format!("Profil : {}", e.message());
+                self.update(|m| m.set_error(Some(msg)));
+            }
+        }
     }
 
     // ── Tâche de session ────────────────────────────────────────────────────
@@ -1052,6 +1170,7 @@ impl Treadmill {
                         if let Err(e) = self.flush_pending_stop().await {
                             return Exit::Lost(e.message());
                         }
+                        self.drive_profile().await;
                         cycles += 1;
                         if cycles <= STATIC_CYCLES || cycles % STATIC_CYCLES == 0 {
                             queue.extend(self.model().missing_static_ids(cycles <= ARTICLE_CYCLES));
@@ -1085,7 +1204,10 @@ mod tests {
 
     fn treadmill() -> (Treadmill, Simulator) {
         let sim = Simulator::new();
-        (Treadmill::new(Box::new(|_| {}), Some(sim.clone())), sim)
+        (
+            Treadmill::new(Box::new(|_| {}), Some(sim.clone()), ProfileLibrary::in_memory()),
+            sim,
+        )
     }
 
     /// Attend que `cond` soit vrai sur l'état publié, au plus `secs` secondes.
@@ -1127,11 +1249,11 @@ mod tests {
         until(&t, 5, "consigne relue", |s| s.target_speed_kmh == Some(3.0)).await;
         until(&t, 20, "vitesse atteinte", |s| s.speed_kmh.unwrap_or(0.0) >= 2.9).await;
 
-        // Plafond sous la consigne : la consigne est ramenée au plafond.
-        t.set_speed_cap(2.0).await.expect("plafond");
-        until(&t, 5, "consigne plafonnée", |s| s.target_speed_kmh == Some(2.0)).await;
-        assert!(t.set_target_speed(5.0).await.is_ok());
-        until(&t, 5, "consigne toujours plafonnée", |s| s.target_speed_kmh == Some(2.0)).await;
+        // Au-dessus du maximum du tapis : bornée à 20,0 km/h.
+        t.set_target_speed(25.0).await.expect("consigne bornée");
+        until(&t, 5, "consigne bornée relue", |s| s.target_speed_kmh == Some(20.0)).await;
+        t.set_target_speed(3.0).await.expect("retour à 3,0");
+        until(&t, 5, "consigne relue", |s| s.target_speed_kmh == Some(3.0)).await;
 
         t.set_target_incline(2.0).await.expect("inclinaison");
         until(&t, 15, "inclinaison atteinte", |s| s.incline_pct == Some(2.0)).await;
@@ -1222,6 +1344,155 @@ mod tests {
         until(&t, 5, "consigne console relue", |s| s.target_speed_kmh == Some(1.8)).await;
         sim.act(SimAction::ConsoleStop).unwrap();
         until(&t, 5, "arrêt console relu", |s| s.running == Some(false)).await;
+    }
+
+    /// Tapis simulé avec un profil enregistré et choisi.
+    async fn with_profile(segments: &[(u32, f32, f32)]) -> (Treadmill, Simulator) {
+        use crate::dto::ProfileSegment;
+        let (t, sim) = treadmill();
+        let saved = t
+            .save_profile(RunProfile {
+                id: String::new(),
+                name: "Essai".into(),
+                builtin: false,
+                segments: segments
+                    .iter()
+                    .map(|&(distance_m, speed_kmh, incline_pct)| ProfileSegment {
+                        distance_m,
+                        speed_kmh,
+                        incline_pct,
+                    })
+                    .collect(),
+            })
+            .unwrap();
+        t.select_profile(Some(saved.id)).unwrap();
+        connected_and_read(&t).await;
+        (t, sim)
+    }
+
+    fn seg_index(s: &TreadmillSnapshot) -> u32 {
+        s.profile.as_ref().map_or(99, |p| p.segment_index)
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn profil_deroule_jusqu_a_la_recuperation() {
+        let (t, _sim) = with_profile(&[(60, 2.0, 1.0), (60, 4.0, 0.0)]).await;
+        let p = t.snapshot().profile.unwrap();
+        assert_eq!((p.segment_index, p.done_m, p.total_m), (0, 0, 120));
+
+        t.start().await.unwrap();
+        until(&t, 20, "segment 1 appliqué", |s| {
+            s.target_speed_kmh == Some(2.0) && s.target_incline_pct == Some(1.0)
+        })
+        .await;
+        until(&t, 200, "segment 2", |s| seg_index(s) == 1).await;
+        until(&t, 10, "segment 2 appliqué", |s| {
+            s.target_speed_kmh == Some(4.0) && s.target_incline_pct == Some(0.0)
+        })
+        .await;
+        until(&t, 200, "profil terminé", |s| s.profile.as_ref().is_some_and(|p| p.finished)).await;
+        until(&t, 10, "récupération", |s| s.target_speed_kmh == Some(3.0)).await;
+        // Pas d'arrêt automatique.
+        sleep(Duration::from_secs(30)).await;
+        let s = t.snapshot();
+        assert_eq!((s.running, s.target_speed_kmh), (Some(true), Some(3.0)));
+        t.stop().await.unwrap();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn profil_reglage_manuel_jusqu_au_segment_suivant() {
+        let (t, sim) = with_profile(&[(60, 2.0, 0.0), (60, 3.0, 0.0)]).await;
+        t.start().await.unwrap();
+        until(&t, 20, "segment 1 appliqué", |s| s.target_speed_kmh == Some(2.0)).await;
+
+        t.set_target_speed(2.5).await.unwrap();
+        until(&t, 5, "consigne manuelle", |s| {
+            s.target_speed_kmh == Some(2.5) && s.profile.as_ref().is_some_and(|p| p.manual)
+        })
+        .await;
+        // La console aussi : le profil ne la contredit pas.
+        sim.act(SimAction::ConsoleIncline { delta: 1.0 }).unwrap();
+        sleep(Duration::from_secs(15)).await;
+        let s = t.snapshot();
+        assert_eq!((s.target_speed_kmh, s.target_incline_pct), (Some(2.5), Some(1.0)));
+        assert_eq!(seg_index(&s), 0);
+
+        until(&t, 200, "segment 2 appliqué", |s| {
+            seg_index(s) == 1 && s.target_speed_kmh == Some(3.0) && s.target_incline_pct == Some(0.0)
+        })
+        .await;
+        assert!(!t.snapshot().profile.unwrap().manual);
+        t.stop().await.unwrap();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn profil_pause_reprise_et_fin_de_seance() {
+        let (t, sim) = with_profile(&[(200, 2.5, 2.0), (100, 3.0, 0.0)]).await;
+        t.start().await.unwrap();
+        until(&t, 20, "segment 1 appliqué", |s| s.target_speed_kmh == Some(2.5)).await;
+        until(&t, 120, "un peu de chemin", |s| {
+            s.profile.as_ref().is_some_and(|p| p.done_m >= 40)
+        })
+        .await;
+
+        // Pause : la progression reste, le profil ne touche plus à rien.
+        assert!(t.select_profile(None).is_ok(), "« aucun profil » toujours accepté");
+        t.select_profile(Some(t.snapshot().profile.map_or(String::new(), |p| p.profile_id)))
+            .unwrap_err();
+        let id = t.library().selected().map(str::to_string);
+        assert_eq!(id, None);
+        // On le reprend bande arrêtée.
+        t.stop().await.unwrap();
+        until(&t, 15, "bande arrêtée", |s| s.speed_kmh == Some(0.0)).await;
+        let saved = t.profiles().into_iter().find(|p| p.name == "Essai").unwrap();
+        t.select_profile(Some(saved.id.clone())).unwrap();
+        let before = t.snapshot().profile.unwrap().done_m;
+        assert_eq!(before, 0, "profil repris : nouveau départ");
+
+        // Reprise après une LONGUE pause : le tapis remet son compteur à zéro
+        // pour redémarrer, le profil continue.
+        t.start().await.unwrap();
+        until(&t, 20, "segment 1 réappliqué", |s| s.target_speed_kmh == Some(2.5)).await;
+        until(&t, 120, "progression", |s| s.profile.as_ref().is_some_and(|p| p.done_m >= 30)).await;
+        t.stop().await.unwrap();
+        until(&t, 15, "pause", |s| s.speed_kmh == Some(0.0) && s.running == Some(false)).await;
+        let paused = t.snapshot().profile.unwrap().done_m;
+        sim.act(SimAction::AgePause).unwrap();
+        t.start().await.unwrap();
+        until(&t, 20, "reprise appliquée", |s| {
+            s.running == Some(true) && s.target_speed_kmh == Some(2.5)
+        })
+        .await;
+        assert!(
+            t.snapshot().profile.unwrap().done_m >= paused,
+            "progression gardée malgré la remise à zéro du tapis"
+        );
+
+        // Fin de séance (pause puis second arrêt) : retour au début du profil.
+        t.stop().await.unwrap();
+        until(&t, 15, "pause", |s| s.speed_kmh == Some(0.0) && s.running == Some(false)).await;
+        t.stop().await.unwrap();
+        until(&t, 10, "profil au début", |s| {
+            s.profile.as_ref().is_some_and(|p| p.done_m == 0) && s.distance_m == Some(0)
+        })
+        .await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn profil_protege_pendant_la_marche() {
+        let (t, _sim) = with_profile(&[(100, 2.0, 0.0)]).await;
+        let other = t.profiles().remove(0);
+        t.start().await.unwrap();
+        until(&t, 20, "bande partie", |s| s.running == Some(true)).await;
+        let current = t.profiles().into_iter().find(|p| p.name == "Essai").unwrap();
+        assert!(t.select_profile(Some(other.id.clone())).is_err());
+        assert!(t.save_profile(current.clone()).is_err());
+        assert!(t.delete_profile(&current.id).is_err());
+        t.stop().await.unwrap();
+        until(&t, 15, "bande arrêtée", |s| s.running == Some(false)).await;
+        assert!(t.save_profile(current.clone()).is_ok());
+        assert!(t.select_profile(Some(other.id)).is_ok());
+        assert!(t.delete_profile(&current.id).is_ok());
     }
 
     #[tokio::test(start_paused = true)]

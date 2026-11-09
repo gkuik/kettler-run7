@@ -6,7 +6,7 @@
 
 use tauri::State;
 
-use crate::dto::{SimAction, SimStatus, TreadmillSnapshot};
+use crate::dto::{RunProfile, SimAction, SimStatus, TreadmillSnapshot};
 use crate::treadmill::Treadmill;
 
 /// Journal de diagnostic (terminal de `tauri dev`) : chaque commande et son issue.
@@ -55,7 +55,7 @@ pub async fn stop(treadmill: State<'_, Treadmill>) -> Result<(), String> {
     r
 }
 
-/// Consigne de vitesse (km/h), arrondie, bornée et plafonnée côté Rust.
+/// Consigne de vitesse (km/h), arrondie et bornée aux limites du tapis côté Rust.
 #[tauri::command]
 pub async fn set_target_speed(kmh: f32, treadmill: State<'_, Treadmill>) -> Result<(), String> {
     let r = treadmill.set_target_speed(kmh).await;
@@ -71,11 +71,41 @@ pub async fn set_target_incline(pct: f32, treadmill: State<'_, Treadmill>) -> Re
     r
 }
 
-/// Plafond de vitesse (1–20 km/h) appliqué à toute consigne.
+// ── Profils de course ───────────────────────────────────────────────────────
+
+/// Profils de départ puis profils de l'utilisateur (ordre alphabétique).
 #[tauri::command]
-pub async fn set_speed_cap(kmh: f32, treadmill: State<'_, Treadmill>) -> Result<(), String> {
-    let r = treadmill.set_speed_cap(kmh).await;
-    log_result(&format!("set_speed_cap({kmh})"), &r);
+pub async fn list_profiles(treadmill: State<'_, Treadmill>) -> Result<Vec<RunProfile>, String> {
+    Ok(treadmill.profiles())
+}
+
+/// Enregistre un profil (créé si son `id` est vide) ; rend le profil enregistré.
+#[tauri::command]
+pub async fn save_profile(
+    profile: RunProfile,
+    treadmill: State<'_, Treadmill>,
+) -> Result<RunProfile, String> {
+    let r = treadmill.save_profile(profile);
+    log_result("save_profile", &r.as_ref().map(|_| ()).map_err(Clone::clone));
+    r
+}
+
+/// Supprime un profil de l'utilisateur.
+#[tauri::command]
+pub async fn delete_profile(id: String, treadmill: State<'_, Treadmill>) -> Result<(), String> {
+    let r = treadmill.delete_profile(&id);
+    log_result(&format!("delete_profile({id})"), &r);
+    r
+}
+
+/// Choisit le profil déroulé pendant la séance (`null` : aucun).
+#[tauri::command]
+pub async fn select_profile(
+    id: Option<String>,
+    treadmill: State<'_, Treadmill>,
+) -> Result<(), String> {
+    let r = treadmill.select_profile(id.clone());
+    log_result(&format!("select_profile({id:?})"), &r);
     r
 }
 

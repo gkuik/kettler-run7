@@ -3,12 +3,12 @@ import {
   MAX_LEAD_M,
   canAdjust,
   canStart,
-  clampCap,
   clampIncline,
   clampSpeed,
   inclineStepUseful,
   isPaused,
   isStarting,
+  canEditProfiles,
   keyAction,
   nextIncline,
   nextSpeed,
@@ -23,7 +23,7 @@ import {
 } from "./controls";
 import { emptySnapshot, type TreadmillSnapshot } from "./types";
 
-/** Tapis connecté, bande en marche à 3,0 km/h, plafond 6,0. */
+/** Tapis connecté, bande en marche à 3,0 km/h. */
 function running(over: Partial<TreadmillSnapshot> = {}): TreadmillSnapshot {
   return {
     ...emptySnapshot(),
@@ -139,18 +139,20 @@ describe("stopButtonMode", () => {
 });
 
 describe("bornage de la vitesse", () => {
-  it("borne à [min, min(plafond, max)]", () => {
+  it("borne aux limites annoncées par le tapis", () => {
     const s = running();
-    expect(speedBounds(s)).toEqual({ min: 0.8, max: 6 });
-    expect(clampSpeed(s, 9)).toBe(6);
+    expect(speedBounds(s)).toEqual({ min: 0.8, max: 20 });
+    expect(clampSpeed(s, 9)).toBe(9);
+    expect(clampSpeed(s, 30)).toBe(20);
     expect(clampSpeed(s, 0.2)).toBe(0.8);
     expect(clampSpeed(s, 3.14)).toBe(3.1);
-    expect(clampSpeed(running({ speedCapKmh: 25 }), 30)).toBe(20);
+    const bride = running({ limits: { speedMinKmh: 0.8, speedMaxKmh: 5, inclineMinPct: 0, inclineMaxPct: 15 } });
+    expect(clampSpeed(bride, 9)).toBe(5);
   });
 
   it("calcule la consigne suivante depuis la consigne relue", () => {
     expect(nextSpeed(running({ targetSpeedKmh: 3.5, speedKmh: 3.1 }), 0.1)).toBe(3.6);
-    expect(nextSpeed(running({ targetSpeedKmh: 5.8 }), 0.5)).toBe(6);
+    expect(nextSpeed(running({ targetSpeedKmh: 19.8 }), 0.5)).toBe(20);
     expect(nextSpeed(running({ targetSpeedKmh: 1 }), -0.5)).toBe(0.8);
     // Pas de consigne connue : on part de la vitesse réelle, sinon du minimum.
     expect(nextSpeed(running({ targetSpeedKmh: null, speedKmh: 2 }), 0.1)).toBe(2.1);
@@ -158,23 +160,19 @@ describe("bornage de la vitesse", () => {
   });
 
   it("désactive un pas qui ne changerait rien", () => {
-    expect(speedStepUseful(running({ targetSpeedKmh: 6 }), 0.1)).toBe(false);
-    expect(speedStepUseful(running({ targetSpeedKmh: 6 }), -0.1)).toBe(true);
+    expect(speedStepUseful(running({ targetSpeedKmh: 20 }), 0.1)).toBe(false);
+    expect(speedStepUseful(running({ targetSpeedKmh: 20 }), -0.1)).toBe(true);
     expect(speedStepUseful(running({ targetSpeedKmh: 0.8 }), -0.5)).toBe(false);
     expect(speedStepUseful(running({ running: false }), 0.1)).toBe(false);
   });
 
-  it("ne propose pas un préréglage au-dessus du plafond", () => {
+  it("ne propose pas un préréglage au-dessus de la vitesse max du tapis", () => {
     expect(presetAllowed(running(), 6)).toBe(true);
-    expect(presetAllowed(running({ speedCapKmh: 5 }), 6)).toBe(false);
+    const bride = running({ limits: { speedMinKmh: 0.8, speedMaxKmh: 5, inclineMinPct: 0, inclineMaxPct: 15 } });
+    expect(presetAllowed(bride, 6)).toBe(false);
     expect(presetAllowed(running({ running: false }), 3)).toBe(false);
   });
 
-  it("borne le plafond à 1–20 km/h", () => {
-    expect(clampCap(0.5)).toBe(1);
-    expect(clampCap(25)).toBe(20);
-    expect(clampCap(6.04)).toBe(6);
-  });
 });
 
 describe("bornage de l'inclinaison", () => {
@@ -188,12 +186,29 @@ describe("bornage de l'inclinaison", () => {
   });
 });
 
+describe("canEditProfiles", () => {
+  it("éditeur accessible bande arrêtée ou tapis déconnecté seulement", () => {
+    const base = emptySnapshot();
+    expect(canEditProfiles(base)).toBe(true);
+    expect(canEditProfiles({ ...base, connection: "connected", running: false })).toBe(true);
+    expect(canEditProfiles({ ...base, connection: "connected", running: true })).toBe(false);
+    expect(canEditProfiles({ ...base, connection: "connected", running: null })).toBe(false);
+    expect(canEditProfiles({ ...base, connection: "reconnecting", running: false })).toBe(false);
+    expect(canEditProfiles({ ...base, connection: "connected", running: false }, true)).toBe(false);
+  });
+});
+
 describe("keyAction", () => {
   it("Échap et Espace arrêtent toujours, même dans un champ", () => {
     expect(keyAction("Escape", false)).toBe("stop");
     expect(keyAction(" ", false)).toBe("stop");
     expect(keyAction("Escape", true)).toBe("stop");
     expect(keyAction(" ", true)).toBe("stop");
+  });
+
+  it("Espace tape une espace dans un champ texte de l'éditeur (Échap arrête toujours)", () => {
+    expect(keyAction(" ", true, true)).toBeNull();
+    expect(keyAction("Escape", true, true)).toBe("stop");
   });
 
   it("les flèches règlent la vitesse hors des champs", () => {
@@ -236,8 +251,8 @@ describe("smoothDistance", () => {
 });
 
 describe("speedScaleMax", () => {
-  it("suit la vitesse maximale annoncée, sans tenir compte du plafond", () => {
-    expect(speedScaleMax(running({ speedCapKmh: 6 }))).toBe(20);
+  it("suit la vitesse maximale annoncée", () => {
+    expect(speedScaleMax(running())).toBe(20);
     expect(
       speedScaleMax(
         running({ limits: { speedMinKmh: 0.8, speedMaxKmh: 16, inclineMinPct: 0, inclineMaxPct: 15 } }),

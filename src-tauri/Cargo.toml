@@ -1,6 +1,6 @@
 [package]
 name = "kettler-run7"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pilotage d'un tapis de course Kettler RUN 7 en Bluetooth Low Energy"
 authors = ["Geoffrey Kuik"]
 edition = "2021"

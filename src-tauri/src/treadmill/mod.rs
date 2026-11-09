@@ -1,6 +1,7 @@
 //! Pilotage du tapis : session Bluetooth (`session`), logique d'état pure
-//! (`state`) et tapis simulé (`sim`).
+//! (`state`), tapis simulé (`sim`) et profils de course (`profile`).
 
+pub mod profile;
 mod session;
 pub mod sim;
 pub mod state;
