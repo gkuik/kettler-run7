@@ -226,6 +226,17 @@ pub fn handshake_frame() -> Vec<u8> {
     encode_frame(&HANDSHAKE_PAYLOAD)
 }
 
+/// Données du handshake (les 18 octets que le tapis renvoie à l'identique).
+pub fn handshake_data() -> &'static [u8] {
+    &HANDSHAKE_PAYLOAD[HEADER_LEN..]
+}
+
+/// Trame de réponse (instruction 3), telle que le tapis l'envoie. Sert au
+/// simulateur et aux tests ; l'application n'en envoie jamais.
+pub fn answer_frame(id: u16, data: &[u8]) -> Vec<u8> {
+    encode_frame(&payload(id, Instruction::Answer, data))
+}
+
 /// Trame de lecture d'une valeur.
 pub fn read_frame(id: ValueId) -> Vec<u8> {
     encode_frame(&payload(id as u16, Instruction::Read, &[]))

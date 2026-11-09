@@ -1,8 +1,10 @@
 <script lang="ts">
   // En-tête : état de la liaison, identité du tapis, « Déconnecter » (une fois
-  // connecté ou en reconnexion) et, hors de l'application native, le menu du
-  // tapis simulé. « Connecter » est dans la colonne de droite (ActionPanel).
-  import { api, simulated } from "../api";
+  // connecté ou en reconnexion) et, sans le vrai tapis (navigateur ou
+  // `npm run app:sim`), le menu du tapis simulé. « Connecter » est dans la
+  // colonne de droite (ActionPanel).
+  import { api } from "../api";
+  import { sim } from "../sim.svelte";
   import { treadmill } from "../treadmill.svelte";
   import type { ConnectionState } from "../types";
   import SimPanel from "./SimPanel.svelte";
@@ -47,7 +49,7 @@
 
   <div class="spacer"></div>
 
-  {#if simulated}
+  {#if sim.kind}
     <SimPanel />
   {/if}
 

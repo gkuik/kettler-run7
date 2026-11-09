@@ -11,6 +11,7 @@
     "test": "vitest run",
     "tauri": "tauri",
     "app:dev": "tauri dev",
+    "app:sim": "KETTLER_SIM=1 tauri dev",
     "app:build": "tauri build",
     "app:build:universal": "tauri build --target universal-apple-darwin"
   },

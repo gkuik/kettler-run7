@@ -25,7 +25,11 @@ btleplug = "0.11"
 uuid = "1"
 futures = "0.3"
 # Le runtime de Tauri est déjà tokio : on n'ajoute que les briques utilisées.
-tokio = { version = "1", features = ["sync", "time", "macros"] }
+tokio = { version = "1", features = ["sync", "time", "macros", "rt"] }
+
+[dev-dependencies]
+# Temps en pause dans les tests (simulateur, session de bout en bout).
+tokio = { version = "1", features = ["sync", "time", "macros", "rt", "test-util"] }
 
 # Profil release orienté empreinte réduite.
 [profile.release]

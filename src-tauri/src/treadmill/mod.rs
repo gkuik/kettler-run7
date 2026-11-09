@@ -1,6 +1,8 @@
-//! Pilotage du tapis : session Bluetooth (`session`) et logique d'état pure (`state`).
+//! Pilotage du tapis : session Bluetooth (`session`), logique d'état pure
+//! (`state`) et tapis simulé (`sim`).
 
 mod session;
+pub mod sim;
 pub mod state;
 
-pub use session::Treadmill;
+pub use session::{StateEmitter, Treadmill};

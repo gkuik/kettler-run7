@@ -11,6 +11,7 @@ Projet pour piloter un tapis de course **Kettler RUN 7** en Bluetooth Low Energy
 ```bash
 npm install                # une fois (.npmrc force legacy-peer-deps : npm 10 plante sinon sur les peers de vitest)
 npm run app:dev            # lance l'appli (Vite :1430 puis Rust ; 1420 est pris par OpenGitClient) — À LANCER DANS LE TERMINAL INTÉGRÉ (Bluetooth)
+npm run app:sim            # même appli, tapis SIMULÉ (KETTLER_SIM=1) : aucun Bluetooth, marche aussi depuis Bash
 npm run check              # svelte-check (vite build ne vérifie pas les types)
 npm test                   # vitest
 npm run build              # frontend seul → dist/
@@ -26,6 +27,18 @@ L'application doit tourner sur **macOS 12**. Ce qui en découle :
 - Les tailles des chiffres dépendent des container queries : chaque usage a un bloc `@supports not (container-type: size)` qui estime la colonne des mesures avec `--kr-col-w` / `--kr-col-h` (définies dans `src/app.css`). En ajouter un à toute nouvelle déclaration en `cq*`. Le halo vert utilise le token `--kr-go-halo` au lieu de `color-mix()`.
 - Rust : rien de spécifique (btleplug/CoreBluetooth, Tauri 2 : macOS 10.15+).
 
+### Simulateur (le tapis est prêté : plus de tests en direct)
+
+`npm run app:sim` lance l'appli avec `KETTLER_SIM=1` : le Rust pilote alors `treadmill/sim.rs` au lieu de btleplug (aucun Bluetooth ouvert, titre de fenêtre « Kettler RUN 7 — SIMULATEUR »). Le simulateur reçoit **les mêmes trames** que le vrai tapis et répond avec les mêmes octets : toute la session (handshake, polling, `WRITE_QUIET`, reconnexion, nouvel essai de démarrage) tourne comme avec le RUN 7. Il reproduit ce qui est documenté plus bas (« Comportements observés ») : handshake obligatoire, réponses par paquets de ~480 ms en notifications de 20 octets, ~7 requêtes/s, écriture collée perdue, compte à rebours, rampes, à-coups de distance, second arrêt = remise à zéro, démarrage ignoré après une longue pause, bande qui continue pendant une coupure, clé retirée = arrêt net + module coupé.
+
+Le menu orange **Simulateur** de l'en-tête affiche la console simulée et provoque les événements (`SimAction` dans `dto.rs`) : boutons de la console (démarrer, stop, ±0,5 km/h, ±1 %), mains sur les capteurs, coupure radio 10/30 s, retrait/remise de la clé, console muette 8 s, prochaine commande en échec, réponse au CRC invalide, pause longue. Le journal `[sim]` du terminal montre chaque écriture reçue (ou perdue).
+
+**Limite** : le simulateur encode ce qu'on SAIT du RUN 7 ; ce qui n'a jamais été mesuré (pas de la console, consignes envoyées bande arrêtée, Online pendant le compte à rebours…) y est une hypothèse. Toute nouvelle fonctionnalité qui touche au protocole reste à valider sur le vrai tapis quand il reviendra.
+
+Les tests `cargo test` jouent des séances complètes de `Treadmill` contre le simulateur (`treadmill/session.rs`, module `tests`), en temps tokio mis en pause (`start_paused`) : plusieurs minutes simulées en quelques millisecondes.
+
+Hors Tauri (`npx vite` dans un navigateur), l'interface utilise à la place le tapis TypeScript `src/lib/mock.ts` (sans le Rust).
+
 `cargo test` / `cargo check` passent depuis l'outil Bash ; tout ce qui ouvre réellement le Bluetooth (l'appli lancée) doit tourner dans le terminal intégré de Claude Desktop. L'appli empaquetée a sa propre autorisation grâce à `src-tauri/Info.plist` (`NSBluetoothAlwaysUsageDescription`).
 
 **Commentaires de code en français ; interface en français.**
@@ -40,12 +53,15 @@ src-tauri/src/
   lib.rs               Builder Tauri, état géré, enregistrement des commandes
   dto.rs               CONTRAT : types envoyés au frontend (TreadmillSnapshot…), EVENT_STATE
   kettler/protocol.rs  protocole pur : CRC, trames, handshake, FrameDecoder (aucune I/O)
-  treadmill/           session BLE (btleplug) : scan, connexion, handshake, polling, écritures, reconnexion
+  treadmill/session.rs session (btleplug ou simulateur) : scan, connexion, handshake, polling, écritures, reconnexion
+  treadmill/state.rs   logique d'état pure (Model)
+  treadmill/sim.rs     tapis simulé au niveau du protocole (KETTLER_SIM=1)
   commands.rs          commandes Tauri (fines : délèguent à treadmill/)
 src/
   main.ts, App.svelte, app.css
   lib/types.ts         miroir TypeScript de dto.rs
   lib/api.ts           invoke/listen ; bascule sur un tapis simulé (lib/mock.ts) hors Tauri
+  lib/sim.svelte.ts    mode simulateur (navigateur ou Rust) et état du tapis simulé
   lib/components/      écran de pilotage
 ```
 
@@ -67,6 +83,8 @@ Commandes (toutes `async`, erreur = `String` lisible en français) :
 | `set_target_speed` | `kmh: f32` | Arrondi à 0,1 ; borné à `[speed_min, min(speed_cap, speed_max)]` ; refusé si la bande ne tourne pas |
 | `set_target_incline` | `pct: f32` | Arrondi à 0,1 ; borné aux limites du tapis ; refusé si la bande ne tourne pas |
 | `set_speed_cap` | `kmh: f32` | Plafond appliqué à toute consigne (1–20 km/h, défaut **6,0**). S'il descend sous la consigne courante, la consigne est ramenée au plafond |
+| `sim_status` | — | `SimStatus` du tapis simulé, ou `null` avec le vrai tapis (sert aussi à détecter le mode simulateur) |
+| `sim_action` | `action: SimAction` | Événement sur le tapis simulé (`{ kind: "linkLoss", seconds }`…) ; refusé avec le vrai tapis |
 
 Règles de la session :
 - Polling : **au plus 3 lectures en attente de réponse** (`MAX_INFLIGHT`), 60 ms entre deux envois ; sans réponse en 700 ms, on repart. Chaque cycle (≥ 500 ms) lit Online, SpeedSet, SpeedGet, InclineSet, InclineGet ; un cycle sur deux ajoute Distance, Energy, Pulse. Après une écriture, la valeur écrite est relue en priorité. ⚠️ Deux limites constatées sur le RUN 7 : la console ne traite que ~6 à 8 requêtes/s (à 16 lectures/s, sa file se remplissait : commandes en 2 à 5 s, voire perdues), et le module BLE ne renvoie les réponses que **par paquets, toutes les ~480 ms** (avec une seule lecture en attente, l'écran ne se rafraîchissait que toutes les ~2 s). Délai mesuré d'une commande (envoi → consigne relue) : ~1,4 s. Les écritures passent entre deux lectures, avec 250 ms de silence avant et après. Écritures BLE en morceaux de 20 octets, sans réponse.
@@ -194,7 +212,7 @@ Une lecture a `n = 0`. Le tapis répond à chaque lecture **et à chaque écritu
 
 ### Message d'identification (handshake) — obligatoire
 
-**Sans ce message dans les secondes qui suivent la connexion, le tapis reste muet et coupe la liaison au bout d'environ 10 s.** Payload (23 octets, valeur n° 1, écriture, 18 octets de données), tiré de kdri :
+**Sans ce message dans les secondes qui suivent la connexion, le tapis reste muet et coupe la liaison au bout d'environ 10 s.** Payload (23 octets, valeur n° 1, 18 octets de données), tiré de kdri. ⚠️ Son octet d'instruction vaut `01` (lecture), pas `02` : c'est une « lecture » qui porte des données. Ne pas la reconnaître sur l'instruction :
 
 ```
 00 01 01 00 12 2d 24 f2 24 96 a4 ff 98 29 f9 21 be 9d aa 9e 4d 01 17
