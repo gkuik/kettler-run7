@@ -7,6 +7,8 @@ Toutes les évolutions notables de l'application. Format inspiré de
 
 ## [Non publié]
 
+## [0.2.0] — 2026-11-09
+
 ### Ajouté
 - Profils de course : suites de segments (distance, vitesse, inclinaison) déroulées
   automatiquement pendant la séance. Choix dans la colonne de droite, éditeur avec
