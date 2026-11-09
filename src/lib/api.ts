@@ -1,19 +1,23 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { MockTreadmill } from "./mock";
-import { EVENT_STATE, type TreadmillSnapshot } from "./types";
+import { EVENT_STATE, type SimAction, type SimStatus, type TreadmillSnapshot } from "./types";
 
 // ── Point d'accès UNIQUE au backend Rust ──────────────────────────────────
 // Aucun composant n'appelle `invoke` directement : tout passe par ici.
 //
-// Hors Tauri (navigateur, `npx vite`), les mêmes appels sont servis par un tapis
-// simulé (`mock.ts`), pour développer l'interface sans le RUN 7.
+// Deux façons de travailler sans le RUN 7 :
+// - hors Tauri (navigateur, `npx vite`), les appels sont servis par un tapis
+//   simulé en TypeScript (`mock.ts`) ;
+// - dans l'application lancée avec `npm run app:sim` (KETTLER_SIM=1), le Rust
+//   pilote un tapis simulé au niveau du protocole (`src-tauri/src/treadmill/sim.rs`) :
+//   tout le code Rust tourne comme avec le vrai tapis.
 
 /** Vrai dans l'application native (Tauri injecte `__TAURI_INTERNALS__`). */
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-/** Vrai quand l'interface pilote le tapis simulé. */
-export const simulated = !inTauri;
+/** Vrai hors de l'application native : tapis simulé en TypeScript. */
+export const browserMock = !inTauri;
 
 let mockInstance: MockTreadmill | null = null;
 
@@ -39,7 +43,7 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> 
   }
 }
 
-/** Les 8 commandes du contrat (CLAUDE.md, « Contrat frontend ↔ Rust »). */
+/** Les 8 commandes du contrat (+ les 2 du simulateur) (CLAUDE.md, « Contrat frontend ↔ Rust »). */
 export const api = {
   getState: (): Promise<TreadmillSnapshot> =>
     inTauri ? call<TreadmillSnapshot>("get_state") : mock().getState(),
@@ -54,6 +58,14 @@ export const api = {
     inTauri ? call<void>("set_target_incline", { pct }) : mock().setTargetIncline(pct),
   setSpeedCap: (kmh: number): Promise<void> =>
     inTauri ? call<void>("set_speed_cap", { kmh }) : mock().setSpeedCap(kmh),
+
+  /** Tapis simulé côté Rust (application lancée avec KETTLER_SIM=1). */
+  sim: {
+    /** `null` quand l'application pilote le vrai tapis (ou hors Tauri). */
+    status: (): Promise<SimStatus | null> =>
+      inTauri ? call<SimStatus | null>("sim_status") : Promise.resolve(null),
+    act: (action: SimAction): Promise<void> => call<void>("sim_action", { action }),
+  },
 
   /** Abonnement à `treadmill-state` ; renvoie la fonction de désabonnement. */
   onState: async (cb: (s: TreadmillSnapshot) => void): Promise<() => void> => {

@@ -78,3 +78,63 @@ pub struct TreadmillSnapshot {
     /// Dernière erreur lisible (connexion, commande refusée…), effacée au succès suivant.
     pub last_error: Option<String>,
 }
+
+// ── Simulateur (lancement avec KETTLER_SIM=1, voir `treadmill/sim.rs`) ──────
+
+/// Ce que ferait le vrai tapis, vu « de la salle » : la console, la clé, la
+/// radio. Indépendant de ce que l'application a lu (utile pendant une coupure).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimStatus {
+    /// Clé de sécurité en place.
+    pub key_in: bool,
+    /// Le tapis répond au scan (clé en place, pas de coupure radio en cours).
+    pub reachable: bool,
+    /// Une liaison est ouverte avec l'application.
+    pub link_active: bool,
+    /// Coupure radio en cours : secondes avant que le tapis soit de nouveau visible.
+    pub link_back_in_s: Option<u32>,
+    /// Console muette (ne répond plus) : secondes restantes.
+    pub muted_for_s: Option<u32>,
+    /// Online : bande en marche (compte à rebours compris).
+    pub running: bool,
+    /// Compte à rebours 3-2-1 en cours : secondes restantes.
+    pub countdown_s: Option<u32>,
+    pub speed_kmh: f32,
+    pub target_speed_kmh: f32,
+    pub incline_pct: f32,
+    pub target_incline_pct: f32,
+    pub distance_m: u32,
+    pub energy_kcal: f32,
+    /// Mains sur les capteurs de pouls.
+    pub hands_on: bool,
+    /// En pause depuis assez longtemps pour que le tapis ignore un démarrage.
+    pub long_pause: bool,
+}
+
+/// Événement provoqué sur le tapis simulé (menu « Simulateur » de l'interface).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum SimAction {
+    /// Coupure radio : la liaison tombe et le tapis reste invisible `seconds` s.
+    /// La bande, elle, continue (comme sur le vrai tapis).
+    LinkLoss { seconds: u32 },
+    /// Retrait de la clé : bande arrêtée net, module BLE coupé.
+    PullKey,
+    InsertKey,
+    /// Boutons de la console.
+    ConsoleStart,
+    ConsoleStop,
+    ConsoleSpeed { delta: f32 },
+    ConsoleIncline { delta: f32 },
+    /// Mains sur les capteurs de pouls (ou non).
+    HandsOn { on: bool },
+    /// Fait comme si la pause durait depuis longtemps (démarrage alors ignoré).
+    AgePause,
+    /// La console ne répond plus pendant `seconds` s (liaison gardée).
+    Mute { seconds: u32 },
+    /// La prochaine réponse aura un CRC invalide.
+    CorruptNextAnswer,
+    /// La prochaine écriture (commande) de l'application échoue côté Bluetooth.
+    FailNextWrite,
+}

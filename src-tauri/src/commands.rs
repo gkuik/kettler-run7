@@ -6,7 +6,7 @@
 
 use tauri::State;
 
-use crate::dto::TreadmillSnapshot;
+use crate::dto::{SimAction, SimStatus, TreadmillSnapshot};
 use crate::treadmill::Treadmill;
 
 /// Journal de diagnostic (terminal de `tauri dev`) : chaque commande et son issue.
@@ -77,4 +77,21 @@ pub async fn set_speed_cap(kmh: f32, treadmill: State<'_, Treadmill>) -> Result<
     let r = treadmill.set_speed_cap(kmh).await;
     log_result(&format!("set_speed_cap({kmh})"), &r);
     r
+}
+
+// ── Simulateur ──────────────────────────────────────────────────────────────
+
+/// État du tapis simulé ; `None` quand l'application pilote le vrai tapis.
+#[tauri::command]
+pub async fn sim_status(treadmill: State<'_, Treadmill>) -> Result<Option<SimStatus>, String> {
+    Ok(treadmill.simulator().map(|sim| sim.status()))
+}
+
+/// Provoque un événement sur le tapis simulé (refusé avec le vrai tapis).
+#[tauri::command]
+pub async fn sim_action(action: SimAction, treadmill: State<'_, Treadmill>) -> Result<(), String> {
+    let sim = treadmill
+        .simulator()
+        .ok_or("Pas de simulateur : l'application pilote le vrai tapis")?;
+    sim.act(action)
 }

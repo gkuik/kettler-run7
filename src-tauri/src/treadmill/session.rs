@@ -17,6 +17,8 @@
 //!   Le stop part donc au plus tard après la seule trame en cours d'envoi.
 //! - Le modèle (`state::Model`) est sous un `std::sync::Mutex`, jamais tenu à
 //!   travers un `.await`. Toute la logique de sécurité des valeurs y vit.
+//! - Le transport est soit le Bluetooth (btleplug), soit le tapis simulé
+//!   (`sim.rs`, lancement avec `KETTLER_SIM=1`) : tout le reste est commun.
 //! - La reconnexion n'écrit que le handshake et des lectures. Seule exception,
 //!   à la demande explicite de l'utilisateur : un STOP pressé pendant la coupure
 //!   est mémorisé et envoyé à la reconnexion si la bande tourne encore.
@@ -29,20 +31,20 @@ use std::time::Duration;
 
 use btleplug::api::{
     Central, CentralEvent, CentralState, Characteristic, Manager as _, Peripheral as _, ScanFilter,
-    ValueNotification, WriteType,
+    WriteType,
 };
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use futures::{Stream, StreamExt};
-use tauri::async_runtime::JoinHandle;
-use tauri::{AppHandle, Emitter};
 use tokio::sync::{oneshot, watch, OnceCell};
+use tokio::task::JoinHandle;
 use tokio::time::{sleep, sleep_until, timeout, Instant};
 use uuid::Uuid;
 
+use super::sim::{SimPort, Simulator};
 use super::state::{
     decode, is_handshake_answer, is_treadmill_name, Model, FAST_IDS, SLOW_EVERY, SLOW_IDS,
 };
-use crate::dto::{ConnectionState, TreadmillSnapshot, EVENT_STATE};
+use crate::dto::{ConnectionState, TreadmillSnapshot};
 use crate::kettler::protocol::{
     handshake_frame, read_frame, write_u16_frame, write_u8_frame, FrameDecoder, ValueId,
 };
@@ -101,16 +103,61 @@ const MSG_STOP_DEFERRED: &str = "Arrêt NON envoyé : le tapis n'est pas connect
 const MSG_STOP_DISCONNECTED: &str = "Arrêt impossible : le tapis n'est pas connecté. Utilisez le \
      bouton stop de la console ou la clé de sécurité.";
 
-type Notifications = Pin<Box<dyn Stream<Item = ValueNotification> + Send>>;
-type Events = Pin<Box<dyn Stream<Item = CentralEvent> + Send>>;
+/// Octets reçus du tapis (notifications FFF1).
+type ByteStream = Pin<Box<dyn Stream<Item = Vec<u8>> + Send>>;
+/// Un élément par perte de liaison signalée par le système.
+type LostStream = Pin<Box<dyn Stream<Item = ()> + Send>>;
+
+/// Reçoit chaque nouvel état du modèle (en production : événement Tauri).
+pub type StateEmitter = Box<dyn Fn(TreadmillSnapshot) + Send + Sync>;
+
+/// D'où viennent les octets : le vrai tapis ou le simulateur.
+enum Backend {
+    /// Gestionnaire et adaptateur Bluetooth, créés au premier `connect`.
+    Ble(OnceCell<(Manager, Adapter)>),
+    Sim(Simulator),
+}
+
+/// Côté écriture d'une liaison établie.
+#[derive(Clone)]
+enum Port {
+    Ble {
+        peripheral: Peripheral,
+        tx: Characteristic,
+    },
+    Sim(SimPort),
+}
+
+impl Port {
+    async fn write(&self, frame: &[u8]) -> Result<(), String> {
+        match self {
+            Port::Ble { peripheral, tx } => write_chunks(peripheral, tx, frame).await,
+            Port::Sim(port) => port.write(frame).await,
+        }
+    }
+
+    async fn disconnect(&self) {
+        match self {
+            Port::Ble { peripheral, .. } => {
+                let _ = timeout(DISCONNECT_TIMEOUT, peripheral.disconnect()).await;
+            }
+            Port::Sim(port) => port.disconnect(),
+        }
+    }
+}
+
+/// Ce qui a été ouvert pendant l'établissement, à refermer en cas d'échec.
+enum Opened {
+    Ble(Peripheral),
+    Sim(SimPort),
+}
 
 /// Liaison active, utilisable pour écrire.
 struct Link {
     /// Génération de la session propriétaire (une ancienne session ne doit pas
     /// effacer la liaison d'une nouvelle).
     gen: u64,
-    peripheral: Peripheral,
-    tx: Characteristic,
+    port: Port,
 }
 
 /// Session en cours (connexion, connectée ou en reconnexion).
@@ -122,10 +169,9 @@ struct SessionHandle {
 
 /// Liaison établie (handshake accepté), pas encore publiée.
 struct Conn {
-    adapter: Adapter,
-    peripheral: Peripheral,
-    tx: Characteristic,
-    notifications: Notifications,
+    port: Port,
+    rx: ByteStream,
+    lost: LostStream,
     decoder: FrameDecoder,
 }
 
@@ -156,7 +202,7 @@ impl WriteError {
 }
 
 struct Shared {
-    app: AppHandle,
+    emit: StateEmitter,
     model: Mutex<Model>,
     link: tokio::sync::Mutex<Option<Link>>,
     session: Mutex<Option<SessionHandle>>,
@@ -174,8 +220,7 @@ struct Shared {
     /// Valeur à relire en priorité après une écriture, pour que l'écran
     /// confirme la commande sans attendre son tour dans le cycle de polling.
     priority_read: Mutex<Option<ValueId>>,
-    /// Gestionnaire et adaptateur Bluetooth, créés au premier `connect`.
-    ble: OnceCell<(Manager, Adapter)>,
+    backend: Backend,
 }
 
 /// Point d'accès unique au tapis (état géré par Tauri).
@@ -187,7 +232,6 @@ async fn cancelled(rx: &mut watch::Receiver<bool>) {
     let _ = rx.wait_for(|v| *v).await;
 }
 
-/// Écrit une trame en morceaux de 20 octets, sans réponse.
 /// Horodatage du journal de diagnostic : secondes depuis le premier appel.
 fn t() -> String {
     static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
@@ -218,6 +262,7 @@ fn is_read_frame(frame: &[u8]) -> bool {
         .any(|m| m.instruction == 1)
 }
 
+/// Écrit une trame en morceaux de 20 octets, sans réponse.
 async fn write_chunks(p: &Peripheral, tx: &Characteristic, frame: &[u8]) -> Result<(), String> {
     for chunk in frame.chunks(CHUNK) {
         match timeout(
@@ -276,9 +321,14 @@ async fn find_treadmill(adapter: &Adapter, limit: Duration) -> Result<Peripheral
 }
 
 impl Treadmill {
-    pub fn new(app: AppHandle) -> Self {
+    /// `sim` : tapis simulé à la place du Bluetooth (rien n'est alors ouvert en BLE).
+    pub fn new(emit: StateEmitter, sim: Option<Simulator>) -> Self {
+        let backend = match sim {
+            Some(sim) => Backend::Sim(sim),
+            None => Backend::Ble(OnceCell::new()),
+        };
         Treadmill(Arc::new(Shared {
-            app,
+            emit,
             model: Mutex::new(Model::new()),
             link: tokio::sync::Mutex::new(None),
             session: Mutex::new(None),
@@ -289,8 +339,16 @@ impl Treadmill {
             last_tx: Mutex::new(None),
             starting: AtomicBool::new(false),
             priority_read: Mutex::new(None),
-            ble: OnceCell::new(),
+            backend,
         }))
+    }
+
+    /// Le tapis simulé, si l'application a été lancée en mode simulateur.
+    pub fn simulator(&self) -> Option<Simulator> {
+        match &self.0.backend {
+            Backend::Sim(sim) => Some(sim.clone()),
+            Backend::Ble(_) => None,
+        }
     }
 
     // ── Outils internes ─────────────────────────────────────────────────────
@@ -308,7 +366,7 @@ impl Treadmill {
     fn publish(&self) {
         let changed = self.model().take_changed();
         if let Some(snap) = changed {
-            let _ = self.0.app.emit(EVENT_STATE, snap);
+            (self.0.emit)(snap);
         }
     }
 
@@ -320,9 +378,10 @@ impl Treadmill {
     }
 
     async fn adapter(&self) -> Result<Adapter, String> {
-        let pair = self
-            .0
-            .ble
+        let Backend::Ble(ble) = &self.0.backend else {
+            return Err("Bluetooth non utilisé en mode simulateur".into());
+        };
+        let pair = ble
             .get_or_try_init(|| async {
                 let manager = Manager::new()
                     .await
@@ -359,9 +418,7 @@ impl Treadmill {
                 sleep_until(last + WRITE_QUIET).await;
             }
         }
-        let r = write_chunks(&link.peripheral, &link.tx, frame)
-            .await
-            .map_err(WriteError::Ble);
+        let r = link.port.write(frame).await.map_err(WriteError::Ble);
         *self.0.last_tx.lock().unwrap() = Some(Instant::now());
         if is_write {
             // Et ne rien envoyer d'autre pendant qu'elle traite l'écriture :
@@ -429,7 +486,7 @@ impl Treadmill {
                 m.set_connection(ConnectionState::Scanning);
             }
             let this = self.clone();
-            let task = tauri::async_runtime::spawn(async move {
+            let task = tokio::spawn(async move {
                 this.session_task(gen, cancel_rx, first_tx).await;
             });
             *slot = Some(SessionHandle {
@@ -636,11 +693,10 @@ impl Treadmill {
         };
 
         loop {
-            let peripheral = conn.peripheral.clone();
+            let port = conn.port.clone();
             *self.0.link.lock().await = Some(Link {
                 gen,
-                peripheral: conn.peripheral.clone(),
-                tx: conn.tx.clone(),
+                port: conn.port.clone(),
             });
             self.update(|m| m.on_connected());
             if let Some(tx) = first.take() {
@@ -653,7 +709,7 @@ impl Treadmill {
 
             let reason = match exit {
                 Exit::Cancelled => {
-                    self.finalize(gen, Some(peripheral), None).await;
+                    self.finalize(gen, Some(port), None).await;
                     return;
                 }
                 Exit::Lost(reason) => reason,
@@ -664,7 +720,7 @@ impl Treadmill {
                 m.on_link_lost();
                 m.set_error(Some(reason));
             });
-            let _ = timeout(DISCONNECT_TIMEOUT, peripheral.disconnect()).await;
+            port.disconnect().await;
 
             // Reconnexion : uniquement handshake + lectures (voir `establish`).
             conn = loop {
@@ -694,10 +750,10 @@ impl Treadmill {
 
     /// Fin de session : libère la liaison et remet l'état à « déconnecté »,
     /// sauf si une session plus récente a pris le relais.
-    async fn finalize(&self, gen: u64, peripheral: Option<Peripheral>, error: Option<String>) {
+    async fn finalize(&self, gen: u64, port: Option<Port>, error: Option<String>) {
         self.clear_link(gen).await;
-        if let Some(p) = peripheral {
-            let _ = timeout(DISCONNECT_TIMEOUT, p.disconnect()).await;
+        if let Some(p) = port {
+            p.disconnect().await;
         }
         let current = {
             let mut slot = self.session_slot();
@@ -726,10 +782,13 @@ impl Treadmill {
         cancel: &mut watch::Receiver<bool>,
         initial: bool,
     ) -> Result<Conn, Failure> {
-        let adapter = self.adapter().await.map_err(Failure::Error)?;
-        let mut found: Option<Peripheral> = None;
+        let adapter = match &self.0.backend {
+            Backend::Ble(_) => Some(self.adapter().await.map_err(Failure::Error)?),
+            Backend::Sim(_) => None,
+        };
+        let mut opened: Option<Opened> = None;
         let outcome = {
-            let attempt = self.establish_inner(&adapter, initial, &mut found);
+            let attempt = self.establish_inner(adapter.as_ref(), initial, &mut opened);
             tokio::select! {
                 biased;
                 _ = cancelled(cancel) => None,
@@ -740,9 +799,15 @@ impl Treadmill {
             Some(Ok(conn)) => Ok(conn),
             other => {
                 // Échec ou annulation : ne pas laisser de liaison à moitié ouverte.
-                let _ = adapter.stop_scan().await;
-                if let Some(p) = found {
-                    let _ = timeout(DISCONNECT_TIMEOUT, p.disconnect()).await;
+                if let Some(a) = &adapter {
+                    let _ = a.stop_scan().await;
+                }
+                match opened {
+                    Some(Opened::Ble(p)) => {
+                        let _ = timeout(DISCONNECT_TIMEOUT, p.disconnect()).await;
+                    }
+                    Some(Opened::Sim(p)) => p.disconnect(),
+                    None => {}
                 }
                 match other {
                     Some(Err(e)) => Err(Failure::Error(e)),
@@ -754,20 +819,78 @@ impl Treadmill {
 
     async fn establish_inner(
         &self,
-        adapter: &Adapter,
+        adapter: Option<&Adapter>,
         initial: bool,
-        found: &mut Option<Peripheral>,
+        opened: &mut Option<Opened>,
     ) -> Result<Conn, String> {
-        if let Ok(CentralState::PoweredOff) = adapter.adapter_state().await {
-            return Err("Bluetooth désactivé : activez-le puis réessayez".into());
-        }
         let limit = if initial {
             SCAN_TIMEOUT
         } else {
             RESCAN_TIMEOUT
         };
+        let (port, mut rx, lost) = match (&self.0.backend, adapter) {
+            (Backend::Sim(sim), _) => {
+                sim.scan(limit).await?;
+                if initial {
+                    self.update(|m| m.set_connection(ConnectionState::Connecting));
+                }
+                let (port, rx) = sim.connect().await?;
+                *opened = Some(Opened::Sim(port.clone()));
+                let rx: ByteStream = Box::pin(rx);
+                let lost: LostStream = Box::pin(futures::stream::pending());
+                (Port::Sim(port), rx, lost)
+            }
+            (Backend::Ble(_), Some(adapter)) => self.open_ble(adapter, initial, limit, opened).await?,
+            (Backend::Ble(_), None) => return Err("Aucun adaptateur Bluetooth trouvé".into()),
+        };
+
+        // Handshake obligatoire : sans lui le tapis reste muet et coupe la liaison.
+        let mut decoder = FrameDecoder::new();
+        port.write(&handshake_frame())
+            .await
+            .map_err(|e| format!("Envoi du message d'identification impossible : {e}"))?;
+        let answered = timeout(HANDSHAKE_TIMEOUT, async {
+            while let Some(bytes) = rx.next().await {
+                // Les trames au CRC invalide sont ignorées.
+                if decoder
+                    .push(&bytes)
+                    .into_iter()
+                    .flatten()
+                    .any(|m| is_handshake_answer(&m))
+                {
+                    return true;
+                }
+            }
+            false
+        })
+        .await;
+        match answered {
+            Ok(true) => {}
+            Ok(false) => return Err("Liaison coupée pendant l'identification".into()),
+            Err(_) => return Err("Le tapis n'a pas répondu au message d'identification".into()),
+        }
+
+        Ok(Conn {
+            port,
+            rx,
+            lost,
+            decoder,
+        })
+    }
+
+    /// Bluetooth : scan, connexion, découverte des services, abonnement à FFF1.
+    async fn open_ble(
+        &self,
+        adapter: &Adapter,
+        initial: bool,
+        limit: Duration,
+        opened: &mut Option<Opened>,
+    ) -> Result<(Port, ByteStream, LostStream), String> {
+        if let Ok(CentralState::PoweredOff) = adapter.adapter_state().await {
+            return Err("Bluetooth désactivé : activez-le puis réessayez".into());
+        }
         let peripheral = find_treadmill(adapter, limit).await?;
-        *found = Some(peripheral.clone());
+        *opened = Some(Opened::Ble(peripheral.clone()));
         if initial {
             self.update(|m| m.set_connection(ConnectionState::Connecting));
         }
@@ -792,7 +915,7 @@ impl Treadmill {
             );
         };
 
-        let mut notifications = peripheral
+        let notifications = peripheral
             .notifications()
             .await
             .map_err(|e| format!("Abonnement aux réponses du tapis impossible : {e}"))?;
@@ -800,43 +923,22 @@ impl Treadmill {
             .subscribe(&rx)
             .await
             .map_err(|e| format!("Abonnement aux réponses du tapis impossible : {e}"))?;
+        let bytes: ByteStream = Box::pin(notifications.filter_map(|n| {
+            futures::future::ready((n.uuid == RX_UUID).then_some(n.value))
+        }));
 
-        // Handshake obligatoire : sans lui le tapis reste muet et coupe la liaison.
-        let mut decoder = FrameDecoder::new();
-        write_chunks(&peripheral, &tx, &handshake_frame())
-            .await
-            .map_err(|e| format!("Envoi du message d'identification impossible : {e}"))?;
-        let answered = timeout(HANDSHAKE_TIMEOUT, async {
-            while let Some(n) = notifications.next().await {
-                if n.uuid != RX_UUID {
-                    continue;
-                }
-                // Les trames au CRC invalide sont ignorées.
-                if decoder
-                    .push(&n.value)
-                    .into_iter()
-                    .flatten()
-                    .any(|m| is_handshake_answer(&m))
-                {
-                    return true;
-                }
-            }
-            false
-        })
-        .await;
-        match answered {
-            Ok(true) => {}
-            Ok(false) => return Err("Liaison coupée pendant l'identification".into()),
-            Err(_) => return Err("Le tapis n'a pas répondu au message d'identification".into()),
-        }
+        // Perte de liaison signalée par le système (le flux de notifications
+        // ne se termine pas toujours).
+        let id = peripheral.id();
+        let lost: LostStream = match adapter.events().await {
+            Ok(events) => Box::pin(events.filter_map(move |ev| {
+                let gone = matches!(ev, CentralEvent::DeviceDisconnected(ref l) if *l == id);
+                futures::future::ready(gone.then_some(()))
+            })),
+            Err(_) => Box::pin(futures::stream::pending()),
+        };
 
-        Ok(Conn {
-            adapter: adapter.clone(),
-            peripheral,
-            tx,
-            notifications,
-            decoder,
-        })
+        Ok((Port::Ble { peripheral, tx }, bytes, lost))
     }
 
     /// Décode les octets reçus et met le modèle à jour. Rend le nombre de
@@ -897,11 +999,6 @@ impl Treadmill {
 
     /// Boucle de polling d'une liaison établie, jusqu'à annulation ou perte.
     async fn run_connected(&self, conn: &mut Conn, cancel: &mut watch::Receiver<bool>) -> Exit {
-        let id = conn.peripheral.id();
-        let mut events: Events = match conn.adapter.events().await {
-            Ok(e) => e,
-            Err(_) => Box::pin(futures::stream::pending()),
-        };
         let mut queue: VecDeque<ValueId> = VecDeque::new();
         let mut cycle_start = Instant::now();
         let mut next_read = Instant::now();
@@ -915,21 +1012,16 @@ impl Treadmill {
             tokio::select! {
                 biased;
                 _ = cancelled(cancel) => return Exit::Cancelled,
-                Some(ev) = events.next() => {
-                    if matches!(ev, CentralEvent::DeviceDisconnected(ref lost) if *lost == id) {
-                        return Exit::Lost(MSG_LINK_LOST.into());
-                    }
-                }
-                n = conn.notifications.next() => match n {
+                Some(()) = conn.lost.next() => return Exit::Lost(MSG_LINK_LOST.into()),
+                bytes = conn.rx.next() => match bytes {
                     None => return Exit::Lost(MSG_LINK_LOST.into()),
-                    Some(n) if n.uuid == RX_UUID => {
-                        let answers = self.ingest(&mut conn.decoder, &n.value);
+                    Some(bytes) => {
+                        let answers = self.ingest(&mut conn.decoder, &bytes);
                         if answers > 0 {
                             last_answer = Instant::now();
                             inflight = inflight.saturating_sub(answers as u32);
                         }
                     }
-                    Some(_) => {}
                 },
                 _ = sleep_until(next_read) => {
                     let now = Instant::now();
@@ -981,5 +1073,180 @@ impl Treadmill {
                 }
             }
         }
+    }
+}
+
+/// Session complète contre le tapis simulé (temps tokio en pause : les
+/// minutes simulées passent en quelques millisecondes).
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dto::SimAction;
+
+    fn treadmill() -> (Treadmill, Simulator) {
+        let sim = Simulator::new();
+        (Treadmill::new(Box::new(|_| {}), Some(sim.clone())), sim)
+    }
+
+    /// Attend que `cond` soit vrai sur l'état publié, au plus `secs` secondes.
+    async fn until(t: &Treadmill, secs: u64, what: &str, cond: impl Fn(&TreadmillSnapshot) -> bool) {
+        let end = Instant::now() + Duration::from_secs(secs);
+        loop {
+            let snap = t.snapshot();
+            if cond(&snap) {
+                return;
+            }
+            assert!(Instant::now() < end, "{what} : pas atteint en {secs} s ({snap:?})");
+            sleep(Duration::from_millis(50)).await;
+        }
+    }
+
+    async fn connected_and_read(t: &Treadmill) {
+        t.connect().await.expect("connexion au simulateur");
+        until(t, 10, "valeurs lues", |s| {
+            s.running.is_some() && s.limits.is_some() && s.device.is_some()
+        })
+        .await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn seance_complete() {
+        let (t, sim) = treadmill();
+        connected_and_read(&t).await;
+        let snap = t.snapshot();
+        assert_eq!(snap.running, Some(false));
+        let device = snap.device.unwrap();
+        assert_eq!((device.name.as_str(), device.id.as_str()), ("RUN 7", "STB1T0158"));
+        assert_eq!(device.article.as_deref(), Some("07883-600"));
+        assert_eq!(snap.limits.unwrap().speed_max_kmh, 20.0);
+
+        t.start().await.expect("démarrage");
+        until(&t, 10, "bande partie", |s| s.speed_kmh == Some(0.8)).await;
+
+        t.set_target_speed(3.0).await.expect("consigne");
+        until(&t, 5, "consigne relue", |s| s.target_speed_kmh == Some(3.0)).await;
+        until(&t, 20, "vitesse atteinte", |s| s.speed_kmh.unwrap_or(0.0) >= 2.9).await;
+
+        // Plafond sous la consigne : la consigne est ramenée au plafond.
+        t.set_speed_cap(2.0).await.expect("plafond");
+        until(&t, 5, "consigne plafonnée", |s| s.target_speed_kmh == Some(2.0)).await;
+        assert!(t.set_target_speed(5.0).await.is_ok());
+        until(&t, 5, "consigne toujours plafonnée", |s| s.target_speed_kmh == Some(2.0)).await;
+
+        t.set_target_incline(2.0).await.expect("inclinaison");
+        until(&t, 15, "inclinaison atteinte", |s| s.incline_pct == Some(2.0)).await;
+
+        sleep(Duration::from_secs(30)).await;
+        until(&t, 5, "compteurs", |s| {
+            s.distance_m.unwrap_or(0) > 10 && s.energy_kcal.unwrap_or(0.0) > 0.0 && s.elapsed_s >= 30
+        })
+        .await;
+
+        // Pause : compteurs gardés.
+        t.stop().await.expect("pause");
+        until(&t, 5, "pause", |s| s.running == Some(false)).await;
+        until(&t, 10, "bande arrêtée", |s| s.speed_kmh == Some(0.0)).await;
+        let paused = t.snapshot();
+        assert!(paused.distance_m.unwrap() > 10);
+        assert!(!sim.status().running);
+
+        // Second arrêt : fin de séance, compteurs et temps remis à zéro.
+        t.stop().await.expect("fin de séance");
+        until(&t, 5, "remise à zéro", |s| s.distance_m == Some(0) && s.elapsed_s == 0).await;
+
+        t.disconnect().await.unwrap();
+        assert_eq!(t.snapshot().connection, ConnectionState::Disconnected);
+        assert!(!sim.status().link_active);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn coupure_bande_en_marche_puis_reconnexion() {
+        let (t, sim) = treadmill();
+        connected_and_read(&t).await;
+        t.start().await.unwrap();
+        until(&t, 10, "bande partie", |s| s.running == Some(true)).await;
+
+        sim.act(SimAction::LinkLoss { seconds: 8 }).unwrap();
+        until(&t, 5, "perte vue", |s| {
+            s.connection == ConnectionState::Reconnecting && s.lost_while_running
+        })
+        .await;
+        // Arrêt demandé pendant la coupure : refusé tout de suite, envoyé à la reconnexion.
+        assert!(t.stop().await.is_err());
+        assert!(sim.status().running, "la bande continue pendant la coupure");
+
+        until(&t, 30, "reconnecté", |s| s.connection == ConnectionState::Connected).await;
+        assert!(!t.snapshot().lost_while_running);
+        until(&t, 10, "arrêt mémorisé envoyé", |s| s.running == Some(false)).await;
+        assert!(!sim.status().running);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn cle_retiree_puis_remise() {
+        let (t, sim) = treadmill();
+        connected_and_read(&t).await;
+        t.start().await.unwrap();
+        until(&t, 10, "bande partie", |s| s.running == Some(true)).await;
+
+        sim.act(SimAction::PullKey).unwrap();
+        until(&t, 5, "perte vue", |s| s.connection == ConnectionState::Reconnecting).await;
+        sleep(Duration::from_secs(20)).await;
+        assert_eq!(t.snapshot().connection, ConnectionState::Reconnecting);
+
+        sim.act(SimAction::InsertKey).unwrap();
+        until(&t, 15, "reconnecté", |s| s.connection == ConnectionState::Connected).await;
+        until(&t, 5, "bande vue arrêtée", |s| s.running == Some(false)).await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn demarrage_apres_longue_pause_et_console() {
+        let (t, sim) = treadmill();
+        connected_and_read(&t).await;
+        t.start().await.unwrap();
+        until(&t, 10, "bande partie", |s| s.speed_kmh == Some(0.8)).await;
+        sleep(Duration::from_secs(10)).await;
+        t.stop().await.unwrap();
+        until(&t, 10, "bande arrêtée", |s| {
+            s.running == Some(false) && s.target_speed_kmh == Some(0.0)
+        })
+        .await;
+
+        // Le tapis ignore Online = 0 : l'appli remet à zéro puis réessaie.
+        sim.act(SimAction::AgePause).unwrap();
+        t.start().await.expect("démarrage après remise à zéro");
+        until(&t, 10, "bande repartie", |s| s.running == Some(true)).await;
+
+        // Réglages faits à la console : relus par l'appli.
+        until(&t, 10, "fin du compte à rebours", |s| s.target_speed_kmh == Some(0.8)).await;
+        sim.act(SimAction::ConsoleSpeed { delta: 1.0 }).unwrap();
+        until(&t, 5, "consigne console relue", |s| s.target_speed_kmh == Some(1.8)).await;
+        sim.act(SimAction::ConsoleStop).unwrap();
+        until(&t, 5, "arrêt console relu", |s| s.running == Some(false)).await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn incidents_de_transport() {
+        let (t, sim) = treadmill();
+        connected_and_read(&t).await;
+        t.start().await.unwrap();
+        until(&t, 10, "bande partie", |s| s.speed_kmh == Some(0.8)).await;
+
+        // Écriture ratée : erreur lisible, la session continue.
+        sim.act(SimAction::FailNextWrite).unwrap();
+        let err = t.set_target_speed(2.0).await.unwrap_err();
+        assert!(err.contains("Écriture Bluetooth impossible"), "{err}");
+        assert_eq!(t.snapshot().connection, ConnectionState::Connected);
+
+        // Réponse au CRC invalide : ignorée, rien ne casse.
+        sim.act(SimAction::CorruptNextAnswer).unwrap();
+        sleep(Duration::from_secs(3)).await;
+        assert_eq!(t.snapshot().connection, ConnectionState::Connected);
+
+        // Console muette : le chien de garde coupe, puis la reconnexion aboutit.
+        sim.act(SimAction::Mute { seconds: 8 }).unwrap();
+        until(&t, 10, "silence détecté", |s| s.connection == ConnectionState::Reconnecting).await;
+        until(&t, 30, "reconnecté", |s| s.connection == ConnectionState::Connected).await;
+        until(&t, 5, "état relu", |s| s.running == Some(true)).await;
+        t.stop().await.unwrap();
     }
 }

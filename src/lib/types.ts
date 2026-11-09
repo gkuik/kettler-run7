@@ -90,3 +90,45 @@ export function emptySnapshot(): TreadmillSnapshot {
     lastError: null,
   };
 }
+
+// ── Simulateur (application lancée avec KETTLER_SIM=1) ──────────────────────
+
+/** Le tapis simulé « vu de la salle » : console, clé, radio. */
+export interface SimStatus {
+  keyIn: boolean;
+  /** Le tapis répond au scan (clé en place, pas de coupure radio en cours). */
+  reachable: boolean;
+  /** Une liaison est ouverte avec l'application. */
+  linkActive: boolean;
+  /** Coupure radio : secondes avant que le tapis soit de nouveau visible. */
+  linkBackInS: number | null;
+  /** Console muette : secondes restantes. */
+  mutedForS: number | null;
+  running: boolean;
+  /** Compte à rebours 3-2-1 : secondes restantes. */
+  countdownS: number | null;
+  speedKmh: number;
+  targetSpeedKmh: number;
+  inclinePct: number;
+  targetInclinePct: number;
+  distanceM: number;
+  energyKcal: number;
+  handsOn: boolean;
+  /** Pause assez longue pour que le tapis ignore un démarrage. */
+  longPause: boolean;
+}
+
+/** Événement provoqué sur le tapis simulé (`SimAction` dans dto.rs). */
+export type SimAction =
+  | { kind: "linkLoss"; seconds: number }
+  | { kind: "pullKey" }
+  | { kind: "insertKey" }
+  | { kind: "consoleStart" }
+  | { kind: "consoleStop" }
+  | { kind: "consoleSpeed"; delta: number }
+  | { kind: "consoleIncline"; delta: number }
+  | { kind: "handsOn"; on: boolean }
+  | { kind: "agePause" }
+  | { kind: "mute"; seconds: number }
+  | { kind: "corruptNextAnswer" }
+  | { kind: "failNextWrite" };
