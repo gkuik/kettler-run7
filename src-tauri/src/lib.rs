@@ -17,9 +17,13 @@ fn simulation_requested() -> bool {
     std::env::var("KETTLER_SIM").is_ok_and(|v| matches!(v.trim(), "1" | "true" | "oui"))
 }
 
+/// Version de l'application (Cargo.toml ; identique à package.json et tauri.conf.json).
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// Configure et lance l'application Tauri.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    eprintln!("Kettler RUN 7 v{VERSION}");
     tauri::Builder::default()
         .setup(|app| {
             // Chaque changement d'état part vers l'interface (`treadmill-state`).
@@ -64,4 +68,23 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de l'application");
+}
+
+#[cfg(test)]
+mod tests {
+    /// Version écrite dans un fichier JSON (`"version": "…"`, première occurrence).
+    fn json_version(text: &str) -> String {
+        let v: serde_json::Value = serde_json::from_str(text).expect("JSON valide");
+        v["version"].as_str().expect("champ version").to_string()
+    }
+
+    /// Les trois sources de la version doivent concorder
+    /// (`npm run version:set -- X.Y.Z` les écrit toutes).
+    #[test]
+    fn version_identique_partout() {
+        let tauri = json_version(include_str!("../tauri.conf.json"));
+        let npm = json_version(include_str!("../../package.json"));
+        assert_eq!(super::VERSION, tauri, "Cargo.toml / tauri.conf.json");
+        assert_eq!(super::VERSION, npm, "Cargo.toml / package.json");
+    }
 }

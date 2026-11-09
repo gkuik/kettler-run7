@@ -1,5 +1,6 @@
 <script lang="ts">
-  // En-tête : état de la liaison, identité du tapis, « Déconnecter » (une fois
+  // En-tête : état de la liaison, identité du tapis, version de l'application,
+  // « Déconnecter » (une fois
   // connecté ou en reconnexion) et, sans le vrai tapis (navigateur ou
   // `npm run app:sim`), le menu du tapis simulé. « Connecter » est dans la
   // colonne de droite (ActionPanel).
@@ -7,6 +8,7 @@
   import { sim } from "../sim.svelte";
   import { treadmill } from "../treadmill.svelte";
   import type { ConnectionState } from "../types";
+  import { APP_VERSION } from "../version";
   import SimPanel from "./SimPanel.svelte";
   import Spinner from "./Spinner.svelte";
 
@@ -48,6 +50,8 @@
   </div>
 
   <div class="spacer"></div>
+
+  <span class="version" title="Version de l'application">v{APP_VERSION}</span>
 
   {#if sim.kind}
     <SimPanel />
@@ -132,6 +136,18 @@
 
   .spacer {
     flex: 1;
+  }
+
+  .version {
+    flex-shrink: 0;
+    font-family: var(--kr-font-num);
+    font-size: var(--kr-fs-hint);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+    color: var(--kr-text-3);
+    user-select: text;
+    -webkit-user-select: text;
   }
 
   .disconnect {
