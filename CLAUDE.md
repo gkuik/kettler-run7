@@ -13,7 +13,9 @@ npm install                # une fois (.npmrc force legacy-peer-deps : npm 10 pl
 npm run app:dev            # lance l'appli (Vite :1430 puis Rust ; 1420 est pris par OpenGitClient) — À LANCER DANS LE TERMINAL INTÉGRÉ (Bluetooth)
 npm run app:sim            # même appli, tapis SIMULÉ (KETTLER_SIM=1) : aucun Bluetooth, marche aussi depuis Bash
 npm run check              # svelte-check (vite build ne vérifie pas les types)
-npm test                   # vitest
+npm test                   # cohérence des versions puis vitest
+npm run version:check      # affiche la version de chaque fichier, échoue s'ils diffèrent
+npm run version:set -- 0.3.0  # écrit la version partout (branche release/ ou hotfix/ seulement)
 npm run build              # frontend seul → dist/
 cd src-tauri && cargo test # tests Rust (protocole, logique d'état) — sans Bluetooth, OK depuis Bash
 ```
@@ -128,7 +130,11 @@ Déroulement (choix de l'utilisateur, 2026-11-09), entièrement côté Rust (`Pr
 - Noms de branches en minuscules, mots séparés par des tirets (`feature/profils-course`).
 - Merges en `--no-ff` pour garder la trace de chaque branche.
 - La configuration git flow est déjà dans `.git/config` (`gitflow.*`) : l'outil `git flow` (`brew install git-flow-avh`) peut s'en servir tel quel, mais il n'est pas obligatoire.
-- Numéro de version (SemVer) à changer en même temps dans `package.json`, `src-tauri/Cargo.toml` et `src-tauri/tauri.conf.json`, sur la branche `release/` ou `hotfix/`.
+- **Versionnement** (SemVer) : la version vit dans 5 fichiers (`package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, `src-tauri/tauri.conf.json`). Ne jamais l'éditer à la main : `npm run version:set -- X.Y.Z` (script `scripts/version.mjs`), sur la branche `release/` ou `hotfix/` seulement. `npm test` et `cargo test` (`version_identique_partout` dans `lib.rs`) échouent si les fichiers divergent.
+- La version est affichée dans l'en-tête de l'appli (`vX.Y.Z`, `src/lib/version.ts`, injectée depuis `package.json` par `vite.config.ts`) et écrite au lancement dans le journal du terminal (`Kettler RUN 7 vX.Y.Z`).
+- `CHANGELOG.md` : chaque changement notable va sous « Non publié » ; la branche `release/` renomme cette section en `[X.Y.Z] — date`.
+- Publier une version : `git checkout -b release/X.Y.Z develop`, `npm run version:set -- X.Y.Z`, CHANGELOG, commit `chore(release): X.Y.Z`, merge `--no-ff` dans `main`, tag annoté `vX.Y.Z`, merge `--no-ff` dans `develop`, puis `git push origin main develop vX.Y.Z`.
+- **Releases GitHub** (`.github/workflows/release.yml`, dépôt `github.com/gkuik/kettler-run7`) : le push d'un tag `vX.Y.Z` lance, sur un runner macOS, la vérification (tag = version des 5 fichiers, section `## [X.Y.Z]` présente dans CHANGELOG.md), `npm test`, `npm run check`, `cargo test`, puis `npm run app:build:universal`, et publie la release « Kettler RUN 7 X.Y.Z » avec `Kettler-RUN-7_X.Y.Z_macOS-universal.dmg`, l'`.app` zippée et `SHA256SUMS.txt`. Notes = section du CHANGELOG + consignes d'installation (`npm run release:notes -- X.Y.Z` pour les voir). Version avec suffixe (`1.0.0-beta.1`) → pré-release. Relance manuelle possible (Actions → Release → Run workflow, avec le tag) : remplace fichiers et notes. Application non signée par un développeur Apple (signature ad hoc).
 
 ### Messages de commit : Conventional Commits
 
