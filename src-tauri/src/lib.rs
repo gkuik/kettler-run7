@@ -8,6 +8,7 @@ mod treadmill;
 use tauri::{Emitter, Manager};
 
 use dto::EVENT_STATE;
+use treadmill::profile::ProfileLibrary;
 use treadmill::sim::Simulator;
 use treadmill::{StateEmitter, Treadmill};
 
@@ -35,7 +36,15 @@ pub fn run() {
                     let _ = w.set_title("Kettler RUN 7 — SIMULATEUR");
                 }
             }
-            app.manage(Treadmill::new(emit, sim));
+            // Profils de course : `profiles.json` dans le dossier de données de l'appli.
+            let library = match app.path().app_data_dir() {
+                Ok(dir) => ProfileLibrary::load(dir.join("profiles.json")),
+                Err(e) => {
+                    eprintln!("[profils] dossier de données indisponible ({e}) : profils non enregistrés");
+                    ProfileLibrary::in_memory()
+                }
+            };
+            app.manage(Treadmill::new(emit, sim, library));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -47,6 +56,10 @@ pub fn run() {
             commands::set_target_speed,
             commands::set_target_incline,
             commands::set_speed_cap,
+            commands::list_profiles,
+            commands::save_profile,
+            commands::delete_profile,
+            commands::select_profile,
             commands::sim_status,
             commands::sim_action,
         ])

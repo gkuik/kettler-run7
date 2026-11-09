@@ -208,3 +208,60 @@ describe("incidents", () => {
     expect(s.speedKmh).toBe(0);
   });
 });
+
+describe("profils de course", () => {
+  it("liste les profils de départ et enregistre un profil", async () => {
+    const before = await tm.listProfiles();
+    expect(before.filter((p) => p.builtin)).toHaveLength(3);
+    const saved = await tm.saveProfile({
+      id: "",
+      name: " Matin ",
+      builtin: false,
+      segments: [{ distanceM: 100, speedKmh: 3.04, inclinePct: 0 }],
+    });
+    expect(saved.id).not.toBe("");
+    expect(saved.name).toBe("Matin");
+    expect(saved.segments[0].speedKmh).toBe(3);
+    expect(await tm.listProfiles()).toHaveLength(4);
+    await expect(tm.saveProfile({ ...before[0] })).rejects.toMatch(/lecture seule/);
+    await expect(tm.deleteProfile(before[0].id)).rejects.toMatch(/départ/);
+  });
+
+  it("déroule le profil choisi pendant la séance", async () => {
+    const saved = await tm.saveProfile({
+      id: "",
+      name: "Essai",
+      builtin: false,
+      segments: [
+        { distanceM: 50, speedKmh: 4, inclinePct: 2 },
+        { distanceM: 50, speedKmh: 5, inclinePct: 0 },
+      ],
+    });
+    await tm.selectProfile(saved.id);
+    expect((await tm.getState()).profile?.segmentIndex).toBe(0);
+    await connect();
+    await startAndWaitBelt();
+    await advance(1);
+    let s = await tm.getState();
+    expect(s.targetSpeedKmh).toBe(4);
+    expect(s.targetInclinePct).toBe(2);
+    await expect(tm.selectProfile(null)).resolves.toBeUndefined();
+    await tm.selectProfile(saved.id).catch(() => {});
+    await tm.stop();
+    await advance(10);
+    await tm.selectProfile(saved.id);
+    await tm.start();
+    await advance(60);
+    s = await tm.getState();
+    expect(s.profile?.segmentIndex).toBeGreaterThanOrEqual(1);
+    expect(s.targetSpeedKmh).toBe(5);
+  });
+
+  it("refuse de changer de profil bande en marche", async () => {
+    const [a, b] = await tm.listProfiles();
+    await tm.selectProfile(a.id);
+    await connect();
+    await startAndWaitBelt();
+    await expect(tm.selectProfile(b.id)).rejects.toMatch(/mettez-la en pause/);
+  });
+});

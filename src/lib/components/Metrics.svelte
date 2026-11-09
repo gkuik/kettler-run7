@@ -1,10 +1,12 @@
 <script lang="ts">
   // Colonne de gauche : vitesse 50 %, temps / distance 27 %, inclinaison /
-  // calories / pouls 23 %. Toutes les valeurs viennent de l'instantané.
+  // calories / pouls 23 %, et, quand un profil est choisi, sa progression
+  // (hauteur fixe, prise sur les autres). Toutes les valeurs viennent de l'instantané.
   import { isPaused } from "../controls";
   import { NONE, formatDistance, formatElapsed, formatEnergy, formatPulse, formatTenths } from "../format";
   import { treadmill } from "../treadmill.svelte";
   import Metric from "./Metric.svelte";
+  import ProfileStrip from "./ProfileStrip.svelte";
   import SpeedCard from "./SpeedCard.svelte";
   import Toasts from "./Toasts.svelte";
 
@@ -26,6 +28,7 @@
 
 <section class="metrics" aria-label="Mesures">
   <SpeedCard />
+  <ProfileStrip />
 
   <div class="row duo">
     <Metric

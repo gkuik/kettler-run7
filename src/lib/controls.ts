@@ -185,6 +185,23 @@ export function clampCap(kmh: number): number {
   return round1(clamp(round1(kmh), CAP_MIN_KMH, CAP_MAX_KMH));
 }
 
+// ── Profils de course ──────────────────────────────────────────────────────
+
+/**
+ * L'éditeur de profils n'est accessible que bande arrêtée (choix de
+ * l'utilisateur) : ni en marche, ni pendant un démarrage, ni quand l'état est
+ * incertain (reconnexion, Online pas encore relu). Tapis déconnecté : permis.
+ */
+export function canEditProfiles(s: TreadmillSnapshot, startPending = false): boolean {
+  if (startPending || s.connection === "reconnecting") return false;
+  if (s.connection === "scanning" || s.connection === "connecting") return true;
+  if (!isConnected(s)) return true;
+  return s.running === false;
+}
+
+/** Choisir un autre profil : mêmes conditions (le Rust refuse aussi bande en marche). */
+export const canChooseProfile = canEditProfiles;
+
 // ── Raccourcis clavier ─────────────────────────────────────────────────────
 
 export type KeyAction = "stop" | "speedUp" | "speedDown";
@@ -194,9 +211,19 @@ export type KeyAction = "stop" | "speedUp" | "speedDown";
  * un champ de saisie (Espace ne doit jamais activer un bouton qui aurait le
  * focus, « Démarrer » par exemple). Les flèches sont laissées aux champs de
  * saisie quand l'un d'eux a le focus.
+ *
+ * Seule exception : Espace dans un champ TEXTE (`typingText`), qui n'existe
+ * que dans l'éditeur de profils, lui-même accessible seulement bande arrêtée
+ * (`canEditProfiles`) : on doit pouvoir y taper « Marche douce ». Échap y
+ * arrête toujours.
  */
-export function keyAction(key: string, inEditableField: boolean): KeyAction | null {
-  if (key === "Escape" || key === " " || key === "Spacebar") return "stop";
+export function keyAction(
+  key: string,
+  inEditableField: boolean,
+  typingText = false,
+): KeyAction | null {
+  if (key === "Escape") return "stop";
+  if (key === " " || key === "Spacebar") return typingText ? null : "stop";
   if (inEditableField) return null;
   if (key === "ArrowUp") return "speedUp";
   if (key === "ArrowDown") return "speedDown";

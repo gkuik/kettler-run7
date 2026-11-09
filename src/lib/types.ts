@@ -65,6 +65,49 @@ export interface TreadmillSnapshot {
   speedCapKmh: number;
   /** Dernière erreur lisible (connexion, commande refusée…), effacée au succès suivant. */
   lastError: string | null;
+  /** Profil de course choisi et sa progression ; `null` = pas de profil. */
+  profile: ProfileProgress | null;
+}
+
+// ── Profils de course ───────────────────────────────────────────────────────
+
+/** Un segment de profil : sur `distanceM` mètres, telle vitesse et telle inclinaison. */
+export interface ProfileSegment {
+  distanceM: number;
+  speedKmh: number;
+  inclinePct: number;
+}
+
+/** Profil de course : suite de segments parcourus dans l'ordre. */
+export interface RunProfile {
+  /** Identifiant stable ; vide à l'enregistrement d'un nouveau profil. */
+  id: string;
+  name: string;
+  /** Profil de départ fourni par l'application : lecture seule (à dupliquer). */
+  builtin: boolean;
+  segments: ProfileSegment[];
+}
+
+/** Où en est le profil choisi (calculé par le Rust, qui seul le déroule). */
+export interface ProfileProgress {
+  profileId: string;
+  profileName: string;
+  segmentCount: number;
+  /** Segment en cours (0…). Vaut `segmentCount` une fois le profil terminé. */
+  segmentIndex: number;
+  /** Distance parcourue depuis le début du profil (mètres). */
+  doneM: number;
+  totalM: number;
+  /** Mètres restants dans le segment en cours (0 une fois terminé). */
+  segmentRemainingM: number;
+  /** Consignes du segment en cours (ou de la récupération une fois terminé). */
+  current: ProfileSegment;
+  /** Segment suivant ; `null` pendant le dernier segment et après. */
+  next: ProfileSegment | null;
+  /** Tous les segments parcourus : récupération lente, sans arrêt automatique. */
+  finished: boolean;
+  /** Consigne changée à la main : le profil reprend la main au segment suivant. */
+  manual: boolean;
 }
 
 /** Plafond de vitesse par défaut (même valeur que côté Rust). */
@@ -88,6 +131,7 @@ export function emptySnapshot(): TreadmillSnapshot {
     device: null,
     speedCapKmh: DEFAULT_SPEED_CAP_KMH,
     lastError: null,
+    profile: null,
   };
 }
 
