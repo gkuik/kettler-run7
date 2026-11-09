@@ -1,0 +1,73 @@
+  0.00 Scanning...
+  4.34 connected
+  4.49   ANSWER value#1      ins=3 len=18 -> 2d 24 f2 24 96 a4 ff 98 29 f9 21 be 9d aa 9e 4d 01 17 
+  5.40 == pass 1
+  6.65   ANSWER value#1      ins=3 len=0 ->  
+  8.09   ANSWER value#2      ins=3 len=2 -> 314 
+  8.57   ANSWER DeviceState  ins=3 len=2 -> 1 
+  9.05   ANSWER Pulse        ins=3 len=2 -> 0 
+ 10.49   ANSWER Distance     ins=3 len=2 -> 0 
+ 10.97   ANSWER Energy       ins=3 len=2 -> 0 
+ 11.45   ANSWER DeviceName   ins=3 len=5 -> 'RUN 7' 
+ 11.93   ANSWER value#21     ins=3 len=4 -> 06 ac fc 01 
+ 11.93   ANSWER value#22     ins=3 len=9 -> 30 37 38 38 33 2d 36 30 30 
+ 11.93   ANSWER value#23     ins=3 len=3 -> 30 30 31 
+ 12.41   ANSWER DeviceType   ins=3 len=1 -> 'T' 
+ 12.41   ANSWER DeviceId     ins=3 len=9 -> 'STB1T0158' 
+ 14.33   ANSWER InclineSet   ins=3 len=2 -> 0 
+ 14.81   ANSWER InclineGet   ins=3 len=2 -> 0 
+ 14.81   ANSWER InclineMin   ins=3 len=2 -> 0 
+ 15.29   ANSWER InclineMax   ins=3 len=2 -> 150 
+ 15.77   ANSWER SpeedSet     ins=3 len=2 -> 0 
+ 15.77   ANSWER SpeedGet     ins=3 len=2 -> 0 
+ 15.77   ANSWER SpeedMin     ins=3 len=2 -> 8 
+ 15.77   ANSWER SpeedMax     ins=3 len=2 -> 200 
+ 16.25   ANSWER Online       ins=3 len=1 -> 1 
+ 22.48 == pass 2
+ 28.73   ANSWER value#1      ins=3 len=0 ->  
+ 29.21   ANSWER value#2      ins=3 len=2 -> 314 
+ 29.69   ANSWER DeviceState  ins=3 len=2 -> 1 
+ 30.65   ANSWER Pulse        ins=3 len=2 -> 0 
+ 31.61   ANSWER Distance     ins=3 len=2 -> 0 
+ 32.09   ANSWER Energy       ins=3 len=2 -> 0 
+ 32.57   ANSWER DeviceName   ins=3 len=5 -> 'RUN 7' 
+ 33.05   ANSWER value#21     ins=3 len=4 -> 06 ac fc 01 
+ 33.05   ANSWER value#22     ins=3 len=9 -> 30 37 38 38 33 2d 36 30 30 
+ 33.53   ANSWER value#23     ins=3 len=3 -> 30 30 31 
+ 34.01   ANSWER DeviceType   ins=3 len=1 -> 'T' 
+ 34.01   ANSWER DeviceId     ins=3 len=9 -> 'STB1T0158' 
+ 34.49   ANSWER InclineSet   ins=3 len=2 -> 0 
+ 34.97   ANSWER InclineGet   ins=3 len=2 -> 0 
+ 34.97   ANSWER InclineMin   ins=3 len=2 -> 0 
+ 35.45   ANSWER InclineMax   ins=3 len=2 -> 150 
+ 35.93   ANSWER SpeedSet     ins=3 len=2 -> 0 
+ 35.93   ANSWER SpeedGet     ins=3 len=2 -> 0 
+ 35.93   ANSWER SpeedMin     ins=3 len=2 -> 8 
+ 35.93   ANSWER SpeedMax     ins=3 len=2 -> 200 
+ 36.41   ANSWER Online       ins=3 len=1 -> 1 
+ 39.56 == summary
+ 39.56   id  1 ?            ins=3 len=0 hex= int= ascii=''
+ 39.56   id  2 ?            ins=3 len=2 hex=01 3a int=314 ascii='.:'
+ 39.56   id  6 DeviceState  ins=3 len=2 hex=00 01 int=1 ascii='..'
+ 39.56   id  8 Pulse        ins=3 len=2 hex=00 00 int=0 ascii='..'
+ 39.56   id 15 Distance     ins=3 len=2 hex=00 00 int=0 ascii='..'
+ 39.56   id 16 Energy       ins=3 len=2 hex=00 00 int=0 ascii='..'
+ 39.56   id 20 DeviceName   ins=3 len=5 hex=52 55 4e 20 37 int= ascii='RUN 7'
+ 39.56   id 21 ?            ins=3 len=4 hex=06 ac fc 01 int=112000001 ascii='....'
+ 39.56   id 22 ?            ins=3 len=9 hex=30 37 38 38 33 2d 36 30 30 int= ascii='07883-600'
+ 39.56   id 23 ?            ins=3 len=3 hex=30 30 31 int=3158065 ascii='001'
+ 39.56   id 24 DeviceType   ins=3 len=1 hex=54 int=84 ascii='T'
+ 39.56   id 25 DeviceId     ins=3 len=9 hex=53 54 42 31 54 30 31 35 38 int= ascii='STB1T0158'
+ 39.56   id 30 InclineSet   ins=3 len=2 hex=00 00 int=0 ascii='..'
+ 39.56   id 31 InclineGet   ins=3 len=2 hex=00 00 int=0 ascii='..'
+ 39.56   id 32 InclineMin   ins=3 len=2 hex=00 00 int=0 ascii='..'
+ 39.56   id 33 InclineMax   ins=3 len=2 hex=00 96 int=150 ascii='..'
+ 39.56   id 34 SpeedSet     ins=3 len=2 hex=00 00 int=0 ascii='..'
+ 39.56   id 35 SpeedGet     ins=3 len=2 hex=00 00 int=0 ascii='..'
+ 39.56   id 36 SpeedMin     ins=3 len=2 hex=00 08 int=8 ascii='..'
+ 39.56   id 37 SpeedMax     ins=3 len=2 hex=00 c8 int=200 ascii='..'
+ 39.56   id 38 Online       ins=3 len=1 hex=01 int=1 ascii='.'
+ 39.56   silent ids: [0, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14, 17, 18, 19, 26, 27, 28, 29, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63]
+ 39.56 DISCONNECTED
+ 39.56 DONE
+ 39.56 END

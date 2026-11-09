@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Kettler RUN 7 — console</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Semi+Condensed:wght@500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+  <header style="height: var(--kr-header-h); flex-shrink: 0; display: flex; align-items: center; gap: var(--kr-sp-5); padding: 0 var(--kr-pad); background: var(--kr-surface); border-bottom: 1px solid var(--kr-line); box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 10px; font-size: var(--kr-fs-sub); font-weight: 700; color: var(--kr-text); white-space: nowrap">
+      <sc-if value="{{hdr.spin}}" hint-placeholder-val="{{ false }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true" style="color: var(--kr-accent)"><circle cx="12" cy="12" r="9" opacity=".25"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>
+      </sc-if>
+      <sc-if value="{{hdr.dot}}" hint-placeholder-val="{{ true }}">
+        <span style="{{hdr.dotStyle}}"></span>
+      </sc-if>
+      <span>{{hdr.label}}</span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 8px; font-size: var(--kr-fs-sub); color: var(--kr-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0">
+      <span style="font-weight: 700; color: var(--kr-text)">{{hdr.devName}}</span>
+      <span>{{hdr.devRest}}</span>
+    </div>
+    <div style="flex: 1"></div>
+    <sc-if value="{{hdr.showDisconnect}}" hint-placeholder-val="{{ true }}">
+      <button type="button" onClick="{{on.disconnect}}" style="height: 40px; padding: 0 16px; border-radius: var(--kr-r-sm); border: 1px solid var(--kr-line); background: transparent; color: var(--kr-text-2); font-family: var(--kr-font-ui); font-size: var(--kr-fs-sub); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10-5 5V2l5 5L7 17"></path></svg>
+        Déconnecter
+      </button>
+    </sc-if>
+  </header>
+
+  <sc-if value="{{banner.critique}}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="margin: var(--kr-pad) var(--kr-pad) 0; min-height: 64px; flex-shrink: 0; box-sizing: border-box; border-radius: var(--kr-r-md); background: var(--kr-stop); color: var(--kr-stop-ink); display: flex; align-items: center; gap: var(--kr-sp-4); padding: 10px var(--kr-sp-4) 10px var(--kr-sp-4); box-shadow: 0 0 0 3px var(--kr-stop-deep)">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M12 3l10 18H2z"></path><path d="M12 10v4.5"></path><path d="M12 17.6v.1"></path></svg>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: var(--kr-fs-banner); font-weight: 700; line-height: 1.2">Connexion perdue : la bande continue de tourner —</div>
+        <div style="font-size: var(--kr-fs-sub); font-weight: 600; line-height: 1.25">utilisez le bouton STOP de la console ou la clé</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: var(--kr-fs-sub); font-weight: 600; white-space: nowrap; flex-shrink: 0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".35"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>
+        Reconnexion…
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{banner.stop}}" hint-placeholder-val="{{ false }}">
+    <div role="alert" style="margin: var(--kr-pad) var(--kr-pad) 0; min-height: 64px; flex-shrink: 0; box-sizing: border-box; border-radius: var(--kr-r-md); background: var(--kr-stop); color: var(--kr-stop-ink); display: flex; align-items: center; gap: var(--kr-sp-4); padding: 10px 10px 10px var(--kr-sp-4)">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><rect x="3" y="3" width="18" height="18" rx="4"></rect><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"></path></svg>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: var(--kr-fs-banner); font-weight: 700; letter-spacing: 0.04em; line-height: 1.2">STOP NON ENVOYÉ</div>
+        <div style="font-size: var(--kr-fs-sub); font-weight: 600; line-height: 1.25">Le tapis n’a pas confirmé l’arrêt. Appuyez à nouveau sur STOP, ou utilisez la console ou la clé.</div>
+      </div>
+      <button type="button" aria-label="Fermer l’alerte" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: var(--kr-r-sm); border: 0; background: rgba(255,255,255,0.16); color: var(--kr-stop-ink); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{banner.memo}}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="margin: var(--kr-pad) var(--kr-pad) 0; min-height: 64px; flex-shrink: 0; box-sizing: border-box; border-radius: var(--kr-r-md); background: var(--kr-warn); color: var(--kr-warn-ink); display: flex; align-items: center; gap: var(--kr-sp-4); padding: 10px var(--kr-sp-4)">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+        <div style="font-size: var(--kr-fs-banner); font-weight: 700; line-height: 1.2">Arrêt mémorisé, envoyé dès la reconnexion</div>
+        <div style="font-size: var(--kr-fs-sub); font-weight: 600; line-height: 1.25">En attendant, la console et la clé arrêtent la bande immédiatement.</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: var(--kr-fs-sub); font-weight: 700; white-space: nowrap; flex-shrink: 0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".35"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>
+        Reconnexion…
+      </div>
+    </div>
+  </sc-if>
+
+  <main style="flex: 1; min-height: 0; display: flex; gap: var(--kr-gap); padding: var(--kr-pad); box-sizing: border-box">
+
+    <section aria-label="Mesures" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--kr-gap); position: relative">
+
+      <div style="flex: 50 1 0; min-height: 0; background: var(--kr-surface); border-radius: var(--kr-r-lg); padding: var(--kr-pad) calc(var(--kr-pad) + 6px); box-sizing: border-box; display: flex; flex-direction: column; gap: var(--kr-sp-3); overflow: hidden">
+        <sc-if value="{{cd.on}}" hint-placeholder-val="{{ false }}">
+          <div style="flex: 1; min-height: 0; display: flex; align-items: center; gap: calc(var(--kr-pad) * 1.5)">
+            <div style="position: relative; width: var(--kr-ring); height: var(--kr-ring); flex-shrink: 0">
+              <svg width="100%" height="100%" viewBox="0 0 120 120" aria-hidden="true" style="position: absolute; inset: 0; transform: rotate(-90deg)">
+                <circle cx="60" cy="60" r="54" fill="none" stroke="var(--kr-track)" stroke-width="8"></circle>
+                <circle cx="60" cy="60" r="54" fill="none" stroke="var(--kr-pause)" stroke-width="8" stroke-linecap="round" stroke-dasharray="{{cd.dash}}"></circle>
+              </svg>
+              <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--kr-font-num); font-weight: 600; font-size: calc(var(--kr-ring) * 0.62); line-height: 1; color: var(--kr-text); font-variant-numeric: tabular-nums">{{cd.n}}</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: var(--kr-sp-2); min-width: 0">
+              <div style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-pause)">Démarrage…</div>
+              <div style="font-family: var(--kr-font-num); font-size: calc(var(--kr-fs-metric) * 0.78); font-weight: 600; line-height: 1.02; color: var(--kr-text); text-wrap: balance">Restez sur les rebords</div>
+              <div style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); line-height: 1.4; text-wrap: pretty">Les réglages sont ignorés pendant le décompte.</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{cd.off}}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+            <div style="display: flex; align-items: baseline; gap: 8px">
+              <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Vitesse</span>
+              <span style="font-size: var(--kr-fs-label); color: var(--kr-text-3)">km/h</span>
+            </div>
+            <div style="display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: var(--kr-r-pill); background: var(--kr-surface-2); font-size: var(--kr-fs-label); font-weight: 600; color: var(--kr-text-2); white-space: nowrap">
+              <span style="{{chip.dot}}"></span>{{chip.label}}
+            </div>
+          </div>
+          <div style="flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--kr-sp-5)">
+            <div style="font-family: var(--kr-font-num); font-weight: 600; font-size: var(--kr-fs-hero); line-height: 0.8; letter-spacing: -0.02em; color: var(--kr-digit); font-variant-numeric: tabular-nums; white-space: nowrap">{{val.vitesse}}</div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 0; padding-bottom: 4px">
+              <sc-if value="{{spark.on}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-bottom: var(--kr-sp-2)">
+                  <svg width="{{spark.w}}" height="{{spark.h}}" viewBox="0 0 240 64" preserveAspectRatio="none" aria-hidden="true" style="display: block">
+                    <polygon points="{{spark.area}}" fill="var(--kr-accent)" opacity="0.14"></polygon>
+                    <polyline points="{{spark.line}}" fill="none" stroke="var(--kr-accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></polyline>
+                  </svg>
+                  <span style="font-size: 13px; color: var(--kr-text-3)">vitesse depuis le début · 24 min</span>
+                </div>
+              </sc-if>
+              <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-3)">Consigne</span>
+              <div style="font-family: var(--kr-font-num); font-weight: 600; font-size: var(--kr-fs-metric); line-height: 0.85; color: {{val.consigneColor}}; font-variant-numeric: tabular-nums">{{val.consigne}}</div>
+              <span style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); white-space: nowrap">{{val.rampe}}</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; flex-shrink: 0">
+            <div style="position: relative; height: 12px">
+              <div style="position: absolute; inset: 0; border-radius: var(--kr-r-pill); background: var(--kr-track); overflow: hidden">
+                <div style="{{g.over}}"></div>
+                <div style="{{g.fill}}"></div>
+              </div>
+              <div style="{{g.tick}}"></div>
+            </div>
+            <div style="position: relative; height: 16px; font-size: 13px; color: var(--kr-text-3)">
+              <span style="position: absolute; left: 0; top: 0">0</span>
+              <span style="{{g.capLabel}}">plafond {{val.plafond}}</span>
+              <span style="position: absolute; right: 0; top: 0">20</span>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="flex: 27 1 0; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--kr-gap)">
+        <div style="background: var(--kr-surface); border-radius: var(--kr-r-md); padding: var(--kr-sp-3) var(--kr-pad); display: flex; flex-direction: column; justify-content: space-between; min-height: 0; min-width: 0; box-sizing: border-box">
+          <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Temps</span>
+          <div style="font-family: var(--kr-font-num); font-weight: 600; font-size: var(--kr-fs-metric); line-height: 0.85; color: var(--kr-digit); font-variant-numeric: tabular-nums; white-space: nowrap">{{val.temps}}</div>
+          <span style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); min-height: 1.2em">{{val.tempsSub}}</span>
+        </div>
+        <div style="background: var(--kr-surface); border-radius: var(--kr-r-md); padding: var(--kr-sp-3) var(--kr-pad); display: flex; flex-direction: column; justify-content: space-between; min-height: 0; min-width: 0; box-sizing: border-box">
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Distance</span>
+            <span style="font-size: var(--kr-fs-label); color: var(--kr-text-3)">{{val.distUnit}}</span>
+          </div>
+          <div style="font-family: var(--kr-font-num); font-weight: 600; font-size: var(--kr-fs-metric); line-height: 0.85; color: var(--kr-digit); font-variant-numeric: tabular-nums; white-space: nowrap">{{val.dist}}</div>
+          <sc-if value="{{obj.on}}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; align-items: center; gap: 10px; font-size: var(--kr-fs-sub); color: var(--kr-text-3); white-space: nowrap">
+              <div style="flex: 1; height: 6px; border-radius: var(--kr-r-pill); background: var(--kr-track); overflow: hidden"><div style="{{obj.bar}}"></div></div>
+              objectif 5 km · {{obj.pct}}
+            </div>
+          </sc-if>
+          <sc-if value="{{obj.off}}" hint-placeholder-val="{{ true }}">
+            <span style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); min-height: 1.2em"></span>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="flex: 23 1 0; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--kr-gap)">
+        <div style="background: var(--kr-surface); border-radius: var(--kr-r-md); padding: var(--kr-sp-3) var(--kr-pad); display: flex; flex-direction: column; justify-content: space-between; min-height: 0; min-width: 0; box-sizing: border-box">
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Inclinaison</span>
+            <span style="font-size: var(--kr-fs-label); color: var(--kr-text-3)">%</span>
+          </div>
+          <div style="font-family: var(--kr-font-num); font-weight: 600; font-size: var(--kr-fs-metric-s); line-height: 0.85; color: var(--kr-digit); font-variant-numeric: tabular-nums; white-space: nowrap">{{val.incl}}</div>
+          <span style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); white-space: nowrap">consigne {{val.inclC}} %</span>
+        </div>
+        <div style="background: var(--kr-surface); border-radius: var(--kr-r-md); padding: var(--kr-sp-3) var(--kr-pad); display: flex; flex-direction: column; justify-content: space-between; min-height: 0; min-width: 0; box-sizing: border-box">
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Calories</span>
+            <span style="font-size: var(--kr-fs-label); color: var(--kr-text-3)">kcal</span>
+          </div>
+          <div style="font-family: var(--kr-font-num); font-weight: 600; font-size: var(--kr-fs-metric-s); line-height: 0.85; color: var(--kr-digit); font-variant-numeric: tabular-nums; white-space: nowrap; display: flex; align-items: baseline; gap: 0.12em"><span style="font-size: 0.6em; color: var(--kr-text-3)">≈</span>{{val.kcal}}</div>
+          <span style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); white-space: nowrap">unité non confirmée</span>
+        </div>
+        <div style="background: var(--kr-surface); border-radius: var(--kr-r-md); padding: var(--kr-sp-3) var(--kr-pad); display: flex; flex-direction: column; justify-content: space-between; min-height: 0; min-width: 0; box-sizing: border-box">
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Pouls</span>
+            <span style="font-size: var(--kr-fs-label); color: var(--kr-text-3)">bpm</span>
+          </div>
+          <div style="font-family: var(--kr-font-num); font-weight: 600; font-size: var(--kr-fs-metric-s); line-height: 0.85; color: {{val.poulsColor}}; font-variant-numeric: tabular-nums; white-space: nowrap; display: flex; align-items: center; gap: 0.18em">
+            <svg width="0.5em" height="0.5em" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="opacity: 0.55"><path d="M12 21s-7.5-4.6-9.3-9.6C1.5 8 3.6 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.6 0 5.7 3.5 4.5 6.9C19.5 16.4 12 21 12 21z"></path></svg>{{val.pouls}}
+          </div>
+          <span style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); white-space: nowrap">{{val.poulsSub}}</span>
+        </div>
+      </div>
+
+      <sc-if value="{{toast.on}}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="position: absolute; left: 50%; bottom: calc(var(--kr-gap) + 8px); transform: translateX(-50%); width: min(92%, 560px); box-sizing: border-box; background: var(--kr-text); color: var(--kr-bg); border-radius: var(--kr-r-md); padding: 14px 16px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.35); overflow: hidden">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--kr-warn)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.4v.1"></path></svg>
+          <div style="flex: 1; font-size: var(--kr-fs-sub); font-weight: 600; line-height: 1.3">Inclinaison +0,5 non appliquée — le tapis n’a pas répondu. Réessayez.</div>
+          <div style="position: absolute; left: 0; bottom: 0; height: 3px; width: 62%; background: var(--kr-warn)"></div>
+        </div>
+      </sc-if>
+    </section>
+
+    <aside aria-label="Commandes" style="width: var(--kr-rail-w); flex-shrink: 0; display: flex; flex-direction: column; gap: var(--kr-gap); min-height: 0">
+
+      <div style="background: var(--kr-surface); border-radius: var(--kr-r-lg); padding: var(--kr-sp-3); display: flex; flex-direction: column; gap: var(--kr-sp-2); flex-shrink: 0">
+        <sc-if value="{{pri.connect}}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{on.connect}}" style="height: var(--kr-primary-h); border: 0; border-radius: var(--kr-r-md); background: var(--kr-accent); color: var(--kr-accent-ink); font-family: var(--kr-font-ui); font-size: var(--kr-fs-primary); font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10-5 5V2l5 5L7 17"></path></svg>
+            Connecter
+          </button>
+          <div style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); line-height: 1.35; padding: 0 4px">Allumez le tapis, puis connectez-le en Bluetooth.</div>
+        </sc-if>
+        <sc-if value="{{pri.busy}}" hint-placeholder-val="{{ false }}">
+          <button type="button" disabled="{{ true }}" style="height: var(--kr-primary-h); border: 1px solid var(--kr-line); border-radius: var(--kr-r-md); background: var(--kr-surface-2); color: var(--kr-text-2); font-family: var(--kr-font-ui); font-size: var(--kr-fs-btn); font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: progress">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--kr-accent)" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".25"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>
+            {{pri.busyLabel}}
+          </button>
+          <div style="font-size: var(--kr-fs-sub); color: var(--kr-text-3); line-height: 1.35; padding: 0 4px">{{pri.busySub}}</div>
+        </sc-if>
+        <sc-if value="{{pri.start}}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{on.start}}" style="height: var(--kr-primary-h); border: 0; border-radius: var(--kr-r-md); background: var(--kr-go); color: var(--kr-go-ink); font-family: var(--kr-font-ui); font-size: var(--kr-fs-primary); font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>
+            Démarrer
+          </button>
+          <div style="font-size: var(--kr-fs-sub); color: var(--kr-text-2); line-height: 1.35; padding: 0 4px">Clé en place, pieds sur les rebords.</div>
+        </sc-if>
+        <sc-if value="{{pri.pause}}" hint-placeholder-val="{{ true }}">
+          <button type="button" onClick="{{on.pause}}" style="height: var(--kr-primary-h); border: 0; border-radius: var(--kr-r-md); background: var(--kr-pause); color: var(--kr-pause-ink); font-family: var(--kr-font-ui); font-size: var(--kr-fs-primary); font-weight: 700; letter-spacing: 0.06em; display: flex; align-items: center; justify-content: center; gap: 14px; cursor: pointer">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="4" width="5" height="16" rx="1.5"></rect><rect x="14" y="4" width="5" height="16" rx="1.5"></rect></svg>
+            PAUSE
+          </button>
+        </sc-if>
+        <sc-if value="{{pri.resumeStop}}" hint-placeholder-val="{{ false }}">
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--kr-sp-2)">
+            <button type="button" onClick="{{on.resume}}" disabled="{{pri.resumeDisabled}}" style="height: var(--kr-primary-h); border: 0; border-radius: var(--kr-r-md); background: var(--kr-go); color: var(--kr-go-ink); font-family: var(--kr-font-ui); font-size: var(--kr-fs-btn); font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; opacity: {{pri.resumeOpacity}}">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"></path></svg>
+              Reprendre
+            </button>
+            <button type="button" onClick="{{on.stop}}" style="height: var(--kr-primary-h); border: 0; border-radius: var(--kr-r-md); background: var(--kr-stop); color: var(--kr-stop-ink); font-family: var(--kr-font-ui); font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer">
+              <span style="display: flex; align-items: center; gap: 8px; font-size: var(--kr-fs-btn); letter-spacing: 0.08em">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>
+                STOP
+              </span>
+              <span style="font-size: 14px; font-weight: 600; line-height: 1.15">Terminer la séance</span>
+            </button>
+          </div>
+          <div style="font-size: var(--kr-fs-sub); color: var(--kr-text-2); line-height: 1.35; padding: 0 4px">{{pri.resumeSub}}</div>
+        </sc-if>
+      </div>
+
+      <div style="flex: 1; min-height: 0; background: var(--kr-surface); border-radius: var(--kr-r-lg); padding: var(--kr-sp-4); box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: var(--kr-sp-3)">
+
+        <div style="display: flex; flex-direction: column; gap: var(--kr-sp-2)">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px">
+            <div style="display: flex; align-items: baseline; gap: 8px">
+              <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Vitesse</span>
+              <span style="font-size: var(--kr-fs-label); color: var(--kr-text-3)">km/h</span>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--kr-sp-2)">
+            <sc-for list="{{speedSteps}}" as="b" hint-placeholder-count="4">
+              <button type="button" onClick="{{b.on}}" disabled="{{b.disabled}}" aria-label="{{b.aria}}" style="{{b.style}}">{{b.label}}</button>
+            </sc-for>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--kr-sp-2)">
+            <sc-for list="{{presets}}" as="b" hint-placeholder-count="4">
+              <button type="button" onClick="{{b.on}}" disabled="{{b.disabled}}" aria-label="{{b.aria}}" aria-pressed="{{b.pressed}}" style="{{b.style}}">{{b.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: var(--kr-sp-2)">
+          <div style="display: flex; align-items: baseline; gap: 8px">
+            <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Inclinaison</span>
+            <span style="font-size: var(--kr-fs-label); color: var(--kr-text-3)">%</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--kr-sp-2)">
+            <sc-for list="{{inclSteps}}" as="b" hint-placeholder-count="2">
+              <button type="button" onClick="{{b.on}}" disabled="{{b.disabled}}" aria-label="{{b.aria}}" style="{{b.style}}">{{b.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: var(--kr-sp-2)">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" style="color: var(--kr-text-3)"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+            <span style="font-size: var(--kr-fs-label); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kr-text-2)">Plafond</span>
+            <span style="font-size: var(--kr-fs-label); color: var(--kr-text-3)">km/h</span>
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--kr-sp-2); align-items: center">
+            <button type="button" onClick="{{on.capDown}}" disabled="{{cap.downDisabled}}" aria-label="Baisser le plafond de 0,5 km/h" style="{{cap.downStyle}}">−</button>
+            <div style="text-align: center; font-family: var(--kr-font-num); font-weight: 600; font-size: calc(var(--kr-fs-btn) * 1.45); color: var(--kr-text); font-variant-numeric: tabular-nums">{{val.plafond}}</div>
+            <button type="button" onClick="{{on.capUp}}" disabled="{{cap.upDisabled}}" aria-label="Monter le plafond de 0,5 km/h" style="{{cap.upStyle}}">+</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: var(--kr-fs-hint); color: var(--kr-text-3); line-height: 1.5">
+          <kbd style="font-family: var(--kr-font-ui); font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--kr-line); background: var(--kr-surface-2); color: var(--kr-text-2)">Échap</kbd>
+          <span>ou</span>
+          <kbd style="font-family: var(--kr-font-ui); font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--kr-line); background: var(--kr-surface-2); color: var(--kr-text-2)">Espace</kbd>
+          <span>arrêt immédiat ·</span>
+          <kbd style="font-family: var(--kr-font-ui); font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--kr-line); background: var(--kr-surface-2); color: var(--kr-text-2)">↑</kbd>
+          <kbd style="font-family: var(--kr-font-ui); font-size: 12px; font-weight: 700; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--kr-line); background: var(--kr-surface-2); color: var(--kr-text-2)">↓</kbd>
+          <span>vitesse ±0,1</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"etat":{"editor":"enum","options":["deconnecte","recherche","connexion","pret","decompte","marche","pause","alerte","stop-non-envoye","arret-memorise","erreur-commande"],"default":"pret"},"theme":{"editor":"enum","options":["sombre","clair"],"default":"sombre"},"w":{"editor":"int","default":900,"min":600,"max":1920,"unit":"px"},"h":{"editor":"int","default":680,"min":520,"max":1200,"unit":"px"},"options":{"editor":"boolean","default":false},"demo":{"editor":"boolean","default":true},"$preview":{"width":900,"height":680}}'>
+const KR_ETATS = ['deconnecte','recherche','connexion','pret','decompte','marche','pause','alerte','stop-non-envoye','arret-memorise','erreur-commande'];
+const KR_SNAP = {
+  'deconnecte':      { v: 0,   c: null, i: 0,   ic: 0,   t: 0,    d: 0,    k: 0,   p: null, cap: 6,   cd: 0 },
+  'recherche':       { v: 0,   c: null, i: 0,   ic: 0,   t: 0,    d: 0,    k: 0,   p: null, cap: 6,   cd: 0 },
+  'connexion':       { v: 0,   c: null, i: 0,   ic: 0,   t: 0,    d: 0,    k: 0,   p: null, cap: 6,   cd: 0 },
+  'pret':            { v: 0,   c: null, i: 0,   ic: 0,   t: 0,    d: 0,    k: 0,   p: null, cap: 6,   cd: 0 },
+  'decompte':        { v: 0,   c: 3,    i: 0,   ic: 0,   t: 0,    d: 0,    k: 0,   p: null, cap: 6,   cd: 3 },
+  'marche':          { v: 4.8, c: 5,    i: 2,   ic: 2.5, t: 1477, d: 2050, k: 142, p: 118,  cap: 5.5, cd: 0 },
+  'pause':           { v: 0,   c: 5,    i: 2.5, ic: 2.5, t: 3765, d: 5310, k: 341, p: null, cap: 6,   cd: 0 },
+  'alerte':          { v: 5,   c: 5,    i: 2.5, ic: 2.5, t: 1872, d: 2610, k: 181, p: 121,  cap: 6,   cd: 0 },
+  'stop-non-envoye': { v: 5,   c: 5,    i: 1,   ic: 1,   t: 2290, d: 3180, k: 223, p: 124,  cap: 6,   cd: 0 },
+  'arret-memorise':  { v: 5,   c: 5,    i: 1,   ic: 1,   t: 2290, d: 3180, k: 223, p: 124,  cap: 6,   cd: 0 },
+  'erreur-commande': { v: 4,   c: 4,    i: 3,   ic: 3,   t: 494,  d: 684,  k: 46,  p: 104,  cap: 6,   cd: 0 }
+};
+const KR_DARK = {
+  bg: '#0A0D12', surface: '#12171F', surface2: '#1A212C', surface3: '#232C3A', line: '#263142', track: '#1F2733',
+  text: '#F3F6FA', text2: '#A7B1C2', text3: '#8692A6', digitOff: '#3F4857',
+  accent: '#3CC6FF', accentInk: '#03141C', go: '#2FC27A', goInk: '#03170C',
+  pause: '#F6B526', pauseInk: '#241700', stop: '#D42F35', stopDeep: '#8F1418', stopInk: '#FFFFFF',
+  warn: '#FF8A3D', warnInk: '#2A1000', frame: 'rgba(0,0,0,0)'
+};
+const KR_LIGHT = {
+  bg: '#EDF0F4', surface: '#FFFFFF', surface2: '#EBEFF4', surface3: '#DDE3EA', line: '#D3DAE3', track: '#E3E8EE',
+  text: '#0B1017', text2: '#46505F', text3: '#5E6A7B', digitOff: '#BFC6D0',
+  accent: '#0A6FBF', accentInk: '#FFFFFF', go: '#187A46', goInk: '#FFFFFF',
+  pause: '#F2A900', pauseInk: '#231600', stop: '#C8282E', stopDeep: '#8A1519', stopInk: '#FFFFFF',
+  warn: '#F07A1A', warnInk: '#2A1000', frame: 'rgba(0,0,0,0)'
+};
+const krClamp = (a, x, b) => Math.max(a, Math.min(b, x));
+const krFr = (x, n) => Number(x).toFixed(n == null ? 1 : n).replace('.', ',');
+const krTemps = (s) => {
+  s = Math.floor(s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  const p = (n) => String(n).padStart(2, '0');
+  return h ? h + ':' + p(m) + ':' + p(ss) : p(m) + ':' + p(ss);
+};
+
+class Component extends DCLogic {
+  componentDidMount() {
+    const demo = this.props.demo;
+    if (demo === false || demo === 'false') return;
+    this._iv = setInterval(() => this._tick(), 250);
+  }
+  componentWillUnmount() {
+    if (this._iv) clearInterval(this._iv);
+    (this._to || []).forEach((t) => clearTimeout(t));
+  }
+  _etatProp() {
+    return KR_ETATS.indexOf(this.props.etat) >= 0 ? this.props.etat : 'pret';
+  }
+  _cur() {
+    const live = this.state && this.state.live;
+    if (live) return Object.assign({}, live);
+    const e = this._etatProp();
+    return Object.assign({ e: e, acc: 0 }, KR_SNAP[e]);
+  }
+  _set(s) { this.setState({ live: s }); }
+  _later(ms, fn) {
+    this._to = this._to || [];
+    this._to.push(setTimeout(() => { const s = this._cur(); const n = fn(s); if (n) this._set(n); }, ms));
+  }
+  _tick() {
+    const live = this.state && this.state.live;
+    if (!live) return;
+    const s = Object.assign({}, live);
+    if (s.e === 'decompte') {
+      s.acc = (s.acc || 0) + 0.25;
+      if (s.acc >= 1) { s.acc = 0; s.cd -= 1; if (s.cd <= 0) { s.e = 'marche'; s.cd = 0; } }
+      this._set(s);
+    } else if (s.e === 'marche') {
+      const c = s.c || 0;
+      s.v = s.v < c ? Math.min(c, s.v + 0.3) : Math.max(c, s.v - 0.3);
+      s.i = s.i < s.ic ? Math.min(s.ic, s.i + 0.1) : Math.max(s.ic, s.i - 0.1);
+      s.t += 0.25;
+      s.d += s.v / 3.6 * 0.25;
+      s.k += s.v * 0.004;
+      s.p = Math.round(88 + s.v * 6);
+      this._set(s);
+    } else if (s.e === 'pause' && s.v > 0) {
+      s.v = Math.max(0, s.v - 0.5);
+      this._set(s);
+    }
+  }
+
+  renderVals() {
+    const P = this.props;
+    const W = Number(P.w) || 900, H = Number(P.h) || 680;
+    const T = P.theme === 'clair' ? KR_LIGHT : KR_DARK;
+    const opt = P.options === true || P.options === 'true';
+    const s = this._cur();
+    const e = s.e;
+
+    const linked = ['pret', 'decompte', 'marche', 'pause', 'stop-non-envoye', 'erreur-commande'].indexOf(e) >= 0;
+    const reco = e === 'alerte' || e === 'arret-memorise';
+    const bandRun = ['marche', 'stop-non-envoye', 'erreur-commande'].indexOf(e) >= 0;
+    const ctrl = linked && bandRun;
+    const banner = e === 'alerte' ? 'critique' : e === 'stop-non-envoye' ? 'stop' : e === 'arret-memorise' ? 'memo' : null;
+
+    const headerH = krClamp(56, 0.07 * H, 64);
+    const pad = krClamp(16, 0.026 * H, 24);
+    const gap = krClamp(12, 0.018 * H, 16);
+    const railW = krClamp(300, 0.26 * W, 380);
+    const bannerH = banner ? 64 + pad : 0;
+    const contentH = H - headerH - 2 * pad - bannerH;
+    const unit = contentH - 2 * gap;
+    const heroH = unit * 0.5, row2H = unit * 0.27, row3H = unit * 0.23;
+    const leftW = W - 2 * pad - railW - gap;
+    const fsHero = Math.min(krClamp(120, 0.25 * H, 260), heroH * 0.6, leftW * 0.34);
+    const fsM = Math.min(krClamp(44, 0.09 * H, 92), row2H * 0.42);
+    const fsS = Math.min(krClamp(34, 0.072 * H, 68), row3H * 0.38);
+
+    const vars = {
+      '--kr-bg': T.bg, '--kr-surface': T.surface, '--kr-surface-2': T.surface2, '--kr-surface-3': T.surface3,
+      '--kr-line': T.line, '--kr-track': T.track, '--kr-text': T.text, '--kr-text-2': T.text2, '--kr-text-3': T.text3,
+      '--kr-digit-off': T.digitOff, '--kr-digit': linked ? T.text : T.digitOff,
+      '--kr-accent': T.accent, '--kr-accent-ink': T.accentInk, '--kr-go': T.go, '--kr-go-ink': T.goInk,
+      '--kr-pause': T.pause, '--kr-pause-ink': T.pauseInk, '--kr-stop': T.stop, '--kr-stop-deep': T.stopDeep,
+      '--kr-stop-ink': T.stopInk, '--kr-warn': T.warn, '--kr-warn-ink': T.warnInk,
+      '--kr-font-num': "'Barlow Semi Condensed', 'SF Pro Display', system-ui, sans-serif",
+      '--kr-font-ui': "Barlow, -apple-system, system-ui, sans-serif",
+      '--kr-fs-hero': fsHero.toFixed(1) + 'px', '--kr-fs-metric': fsM.toFixed(1) + 'px', '--kr-fs-metric-s': fsS.toFixed(1) + 'px',
+      '--kr-fs-primary': krClamp(24, 0.036 * H, 32).toFixed(1) + 'px', '--kr-fs-btn': krClamp(18, 0.026 * H, 22).toFixed(1) + 'px',
+      '--kr-fs-label': krClamp(13, 0.018 * H, 15).toFixed(1) + 'px', '--kr-fs-sub': krClamp(14, 0.019 * H, 16).toFixed(1) + 'px',
+      '--kr-fs-banner': krClamp(17, 0.022 * H, 20).toFixed(1) + 'px', '--kr-fs-hint': '13px',
+      '--kr-sp-1': '4px', '--kr-sp-2': '8px', '--kr-sp-3': '12px', '--kr-sp-4': '16px', '--kr-sp-5': '24px', '--kr-sp-6': '32px',
+      '--kr-pad': pad.toFixed(1) + 'px', '--kr-gap': gap.toFixed(1) + 'px',
+      '--kr-header-h': headerH.toFixed(1) + 'px', '--kr-rail-w': railW.toFixed(1) + 'px',
+      '--kr-btn-h': krClamp(52, 0.07 * H, 64).toFixed(1) + 'px', '--kr-primary-h': krClamp(80, 0.115 * H, 104).toFixed(1) + 'px',
+      '--kr-r-sm': '10px', '--kr-r-md': '14px', '--kr-r-lg': '20px', '--kr-r-pill': '999px',
+      '--kr-ring': (heroH * 0.74).toFixed(1) + 'px'
+    };
+    let rootStyle = Object.keys(vars).map((k) => k + ': ' + vars[k]).join('; ');
+    rootStyle += '; width: ' + W + 'px; height: ' + H + 'px; box-sizing: border-box; display: flex; flex-direction: column; position: relative; overflow: hidden; background: var(--kr-bg); color: var(--kr-text); font-family: var(--kr-font-ui); -webkit-font-smoothing: antialiased';
+    if (banner === 'critique') rootStyle += '; box-shadow: inset 0 0 0 4px var(--kr-stop)';
+
+    const dot = (color, ring) => 'width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: ' + color + (ring ? '; box-shadow: 0 0 0 4px ' + ring : '');
+
+    // En-tête
+    const dev = { devName: 'RUN 7', devRest: '· STB1T0158 · 07883-600' };
+    let hdr;
+    if (e === 'deconnecte') hdr = { spin: false, dot: true, dotStyle: dot(T.text3), label: 'Déconnecté', devName: '', devRest: 'Aucun tapis connecté', showDisconnect: false };
+    else if (e === 'recherche') hdr = { spin: true, dot: false, dotStyle: '', label: 'Recherche du tapis…', devName: '', devRest: '', showDisconnect: false };
+    else if (e === 'connexion') hdr = Object.assign({ spin: true, dot: false, dotStyle: '', label: 'Connexion…', showDisconnect: false }, dev);
+    else if (reco) hdr = Object.assign({ spin: true, dot: false, dotStyle: '', label: 'Reconnexion…', showDisconnect: true }, dev);
+    else hdr = Object.assign({ spin: false, dot: true, dotStyle: dot(T.go, 'color-mix(in srgb, ' + T.go + ' 22%, transparent)'), label: 'Connecté', showDisconnect: true }, dev);
+
+    // Puce d'état de la bande
+    let chip;
+    if (!linked && !reco) chip = { dot: dot(T.text3), label: 'Tapis non connecté' };
+    else if (reco) chip = { dot: dot(e === 'alerte' ? T.stop : T.warn), label: 'Dernières valeurs reçues' };
+    else if (e === 'pret') chip = { dot: dot(T.text3), label: 'Bande arrêtée' };
+    else if (e === 'pause') chip = { dot: dot(T.pause), label: 'En pause' };
+    else chip = { dot: dot(T.go), label: 'En marche' };
+
+    // Valeurs
+    const c = s.c;
+    let rampe = '';
+    if (bandRun && c != null && Math.abs(s.v - c) >= 0.05) rampe = (s.v < c ? 'accélère vers ' : 'ralentit vers ') + krFr(c);
+    else if (bandRun) rampe = 'consigne atteinte';
+    else if (e === 'pause') rampe = 'reprise à ' + krFr(c);
+    else if (linked) rampe = 'définie au démarrage';
+    const distKm = s.d >= 1000;
+    const val = {
+      vitesse: krFr(s.v),
+      consigne: c == null ? '—' : krFr(c),
+      consigneColor: linked && c != null && e !== 'pause' ? 'var(--kr-accent)' : 'var(--kr-digit-off)',
+      rampe: rampe,
+      plafond: krFr(s.cap),
+      temps: krTemps(s.t),
+      tempsSub: e === 'pause' ? 'chrono arrêté' : '',
+      dist: distKm ? krFr(s.d / 1000, 2) : String(Math.round(s.d)),
+      distUnit: distKm ? 'km' : 'm',
+      incl: krFr(s.i),
+      inclC: krFr(s.ic),
+      kcal: String(Math.round(s.k)),
+      pouls: s.p == null ? '—' : String(Math.round(s.p)),
+      poulsColor: s.p == null ? 'var(--kr-text-3)' : 'var(--kr-digit)',
+      poulsSub: s.p == null ? 'sans contact' : 'capteurs des poignées'
+    };
+
+    // Jauge 0–20 km/h
+    const pct = (x) => krClamp(0, (x / 20) * 100, 100).toFixed(2) + '%';
+    const g = {
+      fill: 'position: absolute; left: 0; top: 0; bottom: 0; width: ' + pct(s.v) + '; border-radius: 999px; background: ' + (linked ? 'var(--kr-accent)' : 'var(--kr-digit-off)'),
+      over: 'position: absolute; top: 0; bottom: 0; right: 0; left: ' + pct(s.cap) + '; background: repeating-linear-gradient(135deg, transparent 0 5px, var(--kr-line) 5px 8px)',
+      tick: c == null ? 'display: none' : 'position: absolute; top: -5px; height: 22px; width: 4px; border-radius: 2px; background: var(--kr-text); left: calc(' + pct(c) + ' - 2px)',
+      capLabel: 'position: absolute; top: 0; white-space: nowrap; transform: translateX(-50%); left: ' + pct(s.cap)
+    };
+
+    // Décompte
+    const circ = 2 * Math.PI * 54;
+    const cdFrac = krClamp(0, (s.cd || 0) / 5, 1);
+    const cd = { on: e === 'decompte', off: e !== 'decompte', n: String(s.cd || 0), dash: (circ * cdFrac).toFixed(1) + ' ' + circ.toFixed(1) };
+
+    // Courbe facultative
+    const pts = [];
+    for (let k = 0; k <= 48; k++) {
+      let v = k < 6 ? 0.8 + k * 0.4 : k < 20 ? 3 + (k - 6) * 0.09 : k < 34 ? 4.3 + Math.sin(k * 0.8) * 0.12 : 4.8 + Math.sin(k) * 0.08;
+      v = Math.min(v, 5);
+      pts.push([(k / 48) * 240, 64 - (v / 6) * 58]);
+    }
+    const line = pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const sparkW = W >= 1200 ? 300 : 200, sparkH = W >= 1200 ? 72 : 44;
+    const spark = { on: opt && bandRun, w: sparkW, h: sparkH, line: line, area: '0,64 ' + line + ' 240,64' };
+    const objPct = Math.round(krClamp(0, s.d / 5000, 1) * 100);
+    const obj = { on: opt, off: !opt, pct: objPct + ' %', bar: 'height: 100%; border-radius: 999px; background: var(--kr-accent); width: ' + objPct + '%' };
+
+    // Action principale
+    const pm = e === 'deconnecte' ? 'connect'
+      : (e === 'recherche' || e === 'connexion') ? 'busy'
+      : e === 'pret' ? 'start'
+      : (e === 'decompte' || e === 'marche' || e === 'alerte' || e === 'erreur-commande') ? 'pause'
+      : 'resumeStop';
+    const resumeDisabled = e !== 'pause';
+    const pri = {
+      connect: pm === 'connect', busy: pm === 'busy', start: pm === 'start', pause: pm === 'pause', resumeStop: pm === 'resumeStop',
+      busyLabel: e === 'recherche' ? 'Recherche du tapis…' : 'Connexion…',
+      busySub: e === 'recherche' ? 'Le tapis doit être allumé et à portée.' : 'Kettler RUN 7 trouvé, établissement de la liaison.',
+      resumeDisabled: resumeDisabled,
+      resumeOpacity: resumeDisabled ? '0.35' : '1',
+      resumeSub: e === 'pause' ? 'Reprendre : clé en place, pieds sur les rebords.' : e === 'arret-memorise' ? 'STOP reste actif pendant la reconnexion.' : 'Vous pouvez appuyer à nouveau sur STOP.'
+    };
+
+    // Boutons de réglage
+    const base = 'height: var(--kr-btn-h); border-radius: var(--kr-r-sm); border: 1px solid var(--kr-line); background: var(--kr-surface-2); color: var(--kr-text); font-family: var(--kr-font-num); font-weight: 600; font-size: var(--kr-fs-btn); font-variant-numeric: tabular-nums; padding: 0; cursor: pointer';
+    const st = (dis, active) => base + (active ? '; background: var(--kr-accent); color: var(--kr-accent-ink); border-color: var(--kr-accent)' : '') + (dis ? '; opacity: 0.35; cursor: not-allowed' : '');
+    const maxC = Math.min(20, s.cap);
+    const setC = (nv) => () => { const x = this._cur(); x.c = Math.round(krClamp(0.8, nv(x), Math.min(20, x.cap)) * 10) / 10; this._set(x); };
+    const speedSteps = [-0.5, -0.1, 0.1, 0.5].map((d) => {
+      const dis = !ctrl || (d < 0 ? (c == null || c <= 0.8) : (c != null && c >= maxC));
+      return { label: (d < 0 ? '−' : '+') + krFr(Math.abs(d)), aria: (d < 0 ? 'Ralentir de ' : 'Accélérer de ') + krFr(Math.abs(d)) + ' km/h', disabled: dis, style: st(dis, false), on: setC((x) => (x.c || 0) + d) };
+    });
+    const presets = [3, 4, 5, 6].map((pv) => {
+      const active = c != null && Math.abs(c - pv) < 0.01;
+      const dis = !ctrl || pv > s.cap;
+      return { label: String(pv), aria: 'Préréglage ' + pv + ' km/h', pressed: active ? 'true' : 'false', disabled: dis, style: st(dis, active) + '; font-size: calc(var(--kr-fs-btn) * 1.15)', on: setC(() => pv) };
+    });
+    const setI = (d) => () => { const x = this._cur(); x.ic = Math.round(krClamp(0, x.ic + d, 15) * 10) / 10; this._set(x); };
+    const inclSteps = [-0.5, 0.5].map((d) => {
+      const dis = !ctrl || (d < 0 ? s.ic <= 0 : s.ic >= 15);
+      return { label: (d < 0 ? '−' : '+') + krFr(Math.abs(d)), aria: (d < 0 ? 'Baisser' : 'Monter') + ' l’inclinaison de 0,5 %', disabled: dis, style: st(dis, false), on: setI(d) };
+    });
+    const capDownDis = !linked || s.cap <= 1;
+    const capUpDis = !linked || s.cap >= 20;
+    const cap = { downDisabled: capDownDis, upDisabled: capUpDis, downStyle: st(capDownDis, false) + '; font-size: calc(var(--kr-fs-btn) * 1.3)', upStyle: st(capUpDis, false) + '; font-size: calc(var(--kr-fs-btn) * 1.3)' };
+
+    // Actions (prototype)
+    const reset = (x, e2) => Object.assign(x, KR_SNAP.pret, { e: e2, cap: x.cap, acc: 0 });
+    const on = {
+      connect: () => {
+        const x = this._cur(); x.e = 'recherche'; this._set(x);
+        this._later(1400, (y) => { y.e = 'connexion'; return y; });
+        this._later(2800, (y) => { y.e = 'pret'; return y; });
+      },
+      disconnect: () => { const x = reset(this._cur(), 'deconnecte'); this._set(x); },
+      start: () => { const x = this._cur(); x.e = 'decompte'; x.cd = 5; x.acc = 0; x.c = x.c || 3; x.v = 0; this._set(x); },
+      pause: () => { const x = this._cur(); x.e = 'pause'; this._set(x); },
+      resume: () => { const x = this._cur(); x.e = 'decompte'; x.cd = 5; x.acc = 0; this._set(x); },
+      stop: () => { const x = reset(this._cur(), 'pret'); this._set(x); },
+      capDown: () => { const x = this._cur(); x.cap = Math.max(1, x.cap - 0.5); if (x.c != null && x.c > x.cap) x.c = x.cap; this._set(x); },
+      capUp: () => { const x = this._cur(); x.cap = Math.min(20, x.cap + 0.5); this._set(x); }
+    };
+
+    return {
+      rootStyle, hdr, chip, val, g, cd, spark, obj, pri, on, cap,
+      speedSteps, presets, inclSteps,
+      banner: { critique: banner === 'critique', stop: banner === 'stop', memo: banner === 'memo' },
+      toast: { on: e === 'erreur-commande' }
+    };
+  }
+}
+</script>
+</body>
+</html>

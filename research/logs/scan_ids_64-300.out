@@ -1,0 +1,9 @@
+  0.00 Scanning...
+  1.82 connected
+  1.96   ANSWER value#1      ins=3 len=18 -> 2d 24 f2 24 96 a4 ff 98 29 f9 21 be 9d aa 9e 4d 01 17 
+  2.88 == pass 1
+ 39.57 == summary
+ 39.57   silent ids: 236 of 236
+ 39.57 DISCONNECTED
+ 39.57 DONE
+ 39.57 END

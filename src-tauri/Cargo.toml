@@ -1,0 +1,36 @@
+[package]
+name = "kettler-run7"
+version = "0.1.0"
+description = "Pilotage d'un tapis de course Kettler RUN 7 en Bluetooth Low Energy"
+authors = ["Geoffrey Kuik"]
+edition = "2021"
+rust-version = "1.85"
+
+[lib]
+# `_lib` pour éviter tout conflit de nom sur Windows ; réutilisable en mobile plus tard.
+name = "kettler_run7_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+# BLE multiplateforme (CoreBluetooth sur macOS) : la même pile que bleak,
+# avec laquelle tout le protocole a été vérifié.
+btleplug = "0.11"
+uuid = "1"
+futures = "0.3"
+# Le runtime de Tauri est déjà tokio : on n'ajoute que les briques utilisées.
+tokio = { version = "1", features = ["sync", "time", "macros"] }
+
+# Profil release orienté empreinte réduite.
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

@@ -1,0 +1,261 @@
+  0.00 Scanning...
+  9.69 connected
+ 10.74 SAY Connecté. Démarrez le tapis depuis la console, réglez trois kilomètres heure, puis marchez sans toucher aux réglages.
+ 11.70 wait speed=None set=None dist=None energy=None online=None devstate=None incl=None pulse=None
+ 12.65 wait speed=0 set=None dist=None energy=None online=None devstate=None incl=None pulse=None
+ 13.60 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=None pulse=None
+ 14.55 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 15.50 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 16.45 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 17.40 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 18.35 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 19.30 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 20.25 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 21.20 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 22.15 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 23.10 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 24.05 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 25.00 wait speed=0 set=8 dist=0 energy=0 online=1 devstate=1 incl=0 pulse=0
+ 25.95 wait speed=0 set=8 dist=1 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 26.90 wait speed=0 set=12 dist=1 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 27.85 wait speed=0 set=12 dist=1 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 28.80 wait speed=0 set=17 dist=2 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 29.75 wait speed=8 set=21 dist=3 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 29.75 SAY C'est parti pour trois minutes d'enregistrement.
+ 30.71 LOG t=  1.0 integ_m=   0.2 speed=8 set=21 dist=3 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 31.66 LOG t=  1.9 integ_m=   0.4 speed=8 set=30 dist=4 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 32.61 LOG t=  2.9 integ_m=   0.6 speed=8 set=30 dist=4 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 33.57 LOG t=  3.8 integ_m=   0.8 speed=8 set=30 dist=5 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 34.52 LOG t=  4.8 integ_m=   1.4 speed=20 set=30 dist=6 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 35.47 LOG t=  5.7 integ_m=   2.0 speed=23 set=30 dist=6 energy=0 online=0 devstate=1 incl=0 pulse=0
+ 36.42 LOG t=  6.7 integ_m=   2.6 speed=23 set=30 dist=8 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 37.37 LOG t=  7.6 integ_m=   3.3 speed=27 set=30 dist=9 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 38.32 LOG t=  8.6 integ_m=   4.0 speed=27 set=30 dist=9 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 39.27 LOG t=  9.5 integ_m=   4.8 speed=29 set=30 dist=10 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 40.22 LOG t= 10.5 integ_m=   5.5 speed=29 set=30 dist=10 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 41.17 LOG t= 11.4 integ_m=   6.3 speed=29 set=30 dist=12 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 42.12 LOG t= 12.4 integ_m=   7.1 speed=29 set=30 dist=13 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 43.07 LOG t= 13.3 integ_m=   7.8 speed=29 set=30 dist=13 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 44.03 LOG t= 14.3 integ_m=   8.6 speed=29 set=30 dist=14 energy=4 online=0 devstate=1 incl=0 pulse=0
+ 44.98 LOG t= 15.2 integ_m=   9.4 speed=29 set=30 dist=15 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 45.93 LOG t= 16.2 integ_m=  10.1 speed=29 set=30 dist=15 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 46.88 LOG t= 17.1 integ_m=  10.9 speed=29 set=30 dist=16 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 47.83 LOG t= 18.1 integ_m=  11.7 speed=29 set=30 dist=17 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 48.78 LOG t= 19.0 integ_m=  12.5 speed=30 set=30 dist=18 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 49.73 LOG t= 20.0 integ_m=  13.3 speed=30 set=30 dist=19 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 50.68 LOG t= 20.9 integ_m=  14.0 speed=29 set=30 dist=20 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 51.63 LOG t= 21.9 integ_m=  14.8 speed=30 set=30 dist=20 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 52.58 LOG t= 22.8 integ_m=  15.6 speed=29 set=30 dist=21 energy=8 online=0 devstate=1 incl=0 pulse=0
+ 53.53 LOG t= 23.8 integ_m=  16.3 speed=29 set=30 dist=22 energy=12 online=0 devstate=1 incl=0 pulse=0
+ 54.48 LOG t= 24.7 integ_m=  17.1 speed=30 set=30 dist=23 energy=12 online=0 devstate=1 incl=0 pulse=0
+ 55.43 LOG t= 25.7 integ_m=  17.9 speed=29 set=30 dist=24 energy=12 online=0 devstate=1 incl=0 pulse=0
+ 56.38 LOG t= 26.6 integ_m=  18.7 speed=29 set=30 dist=25 energy=12 online=0 devstate=1 incl=0 pulse=0
+ 57.33 LOG t= 27.6 integ_m=  19.5 speed=30 set=30 dist=25 energy=12 online=0 devstate=1 incl=0 pulse=0
+ 58.28 LOG t= 28.5 integ_m=  20.2 speed=29 set=30 dist=26 energy=12 online=0 devstate=1 incl=0 pulse=0
+ 59.23 LOG t= 29.5 integ_m=  21.0 speed=29 set=30 dist=27 energy=12 online=0 devstate=1 incl=0 pulse=0
+ 60.18 LOG t= 30.4 integ_m=  21.8 speed=29 set=30 dist=28 energy=12 online=0 devstate=1 incl=0 pulse=0
+ 61.13 LOG t= 31.4 integ_m=  22.5 speed=29 set=30 dist=29 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 62.09 LOG t= 32.3 integ_m=  23.3 speed=29 set=30 dist=29 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 63.04 LOG t= 33.3 integ_m=  24.1 speed=29 set=30 dist=30 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 63.99 LOG t= 34.2 integ_m=  24.8 speed=29 set=30 dist=30 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 64.94 LOG t= 35.2 integ_m=  25.6 speed=29 set=30 dist=31 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 65.89 LOG t= 36.1 integ_m=  26.4 speed=30 set=30 dist=32 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 66.84 LOG t= 37.1 integ_m=  27.1 speed=29 set=30 dist=33 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 67.79 LOG t= 38.0 integ_m=  27.9 speed=29 set=30 dist=33 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 68.74 LOG t= 39.0 integ_m=  28.7 speed=29 set=30 dist=34 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 69.69 LOG t= 39.9 integ_m=  29.4 speed=29 set=30 dist=35 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 70.64 LOG t= 40.9 integ_m=  30.2 speed=29 set=30 dist=35 energy=16 online=0 devstate=1 incl=0 pulse=0
+ 71.59 LOG t= 41.8 integ_m=  31.0 speed=29 set=30 dist=36 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 72.54 LOG t= 42.8 integ_m=  31.8 speed=30 set=30 dist=37 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 73.49 LOG t= 43.7 integ_m=  32.6 speed=30 set=30 dist=38 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 74.45 LOG t= 44.7 integ_m=  33.3 speed=29 set=30 dist=39 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 75.40 LOG t= 45.6 integ_m=  34.1 speed=29 set=30 dist=40 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 76.35 LOG t= 46.6 integ_m=  34.9 speed=29 set=30 dist=41 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 77.30 LOG t= 47.5 integ_m=  35.6 speed=29 set=30 dist=42 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 78.25 LOG t= 48.5 integ_m=  36.4 speed=30 set=30 dist=43 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 79.20 LOG t= 49.4 integ_m=  37.2 speed=29 set=30 dist=44 energy=21 online=0 devstate=1 incl=0 pulse=89
+ 80.15 LOG t= 50.4 integ_m=  38.0 speed=30 set=30 dist=45 energy=25 online=0 devstate=1 incl=0 pulse=89
+ 81.10 LOG t= 51.3 integ_m=  38.7 speed=29 set=30 dist=45 energy=25 online=0 devstate=1 incl=0 pulse=89
+ 82.05 LOG t= 52.3 integ_m=  39.5 speed=30 set=30 dist=46 energy=25 online=0 devstate=1 incl=0 pulse=89
+ 83.00 LOG t= 53.2 integ_m=  40.3 speed=29 set=30 dist=47 energy=25 online=0 devstate=1 incl=0 pulse=89
+ 83.96 LOG t= 54.2 integ_m=  41.1 speed=29 set=30 dist=47 energy=25 online=0 devstate=1 incl=0 pulse=89
+ 84.91 LOG t= 55.2 integ_m=  41.8 speed=29 set=30 dist=48 energy=25 online=0 devstate=1 incl=0 pulse=89
+ 85.86 LOG t= 56.1 integ_m=  42.6 speed=29 set=30 dist=49 energy=25 online=0 devstate=1 incl=0 pulse=89
+ 86.81 LOG t= 57.1 integ_m=  43.4 speed=29 set=30 dist=50 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 87.76 LOG t= 58.0 integ_m=  44.1 speed=29 set=30 dist=50 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 88.71 LOG t= 59.0 integ_m=  44.9 speed=29 set=30 dist=51 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 89.66 LOG t= 59.9 integ_m=  45.7 speed=30 set=30 dist=52 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 90.61 LOG t= 60.9 integ_m=  46.5 speed=29 set=30 dist=53 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 91.57 LOG t= 61.8 integ_m=  47.2 speed=29 set=30 dist=54 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 92.52 LOG t= 62.8 integ_m=  48.0 speed=29 set=30 dist=54 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 93.47 LOG t= 63.7 integ_m=  48.8 speed=29 set=30 dist=54 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 94.42 LOG t= 64.7 integ_m=  49.5 speed=30 set=30 dist=54 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 95.37 LOG t= 65.6 integ_m=  50.3 speed=29 set=30 dist=54 energy=29 online=0 devstate=1 incl=0 pulse=89
+ 96.32 LOG t= 66.6 integ_m=  51.1 speed=30 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=89
+ 97.27 LOG t= 67.5 integ_m=  51.9 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=89
+ 98.22 LOG t= 68.5 integ_m=  52.6 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=89
+ 99.17 LOG t= 69.4 integ_m=  53.4 speed=30 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=89
+100.13 LOG t= 70.4 integ_m=  54.2 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=89
+101.08 LOG t= 71.3 integ_m=  55.0 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=89
+102.03 LOG t= 72.3 integ_m=  55.7 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+102.98 LOG t= 73.2 integ_m=  56.5 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+103.93 LOG t= 74.2 integ_m=  57.3 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+104.88 LOG t= 75.1 integ_m=  58.1 speed=30 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+105.83 LOG t= 76.1 integ_m=  58.8 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+106.78 LOG t= 77.0 integ_m=  59.6 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+107.73 LOG t= 78.0 integ_m=  60.4 speed=30 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+108.68 LOG t= 78.9 integ_m=  61.1 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+109.63 LOG t= 79.9 integ_m=  61.9 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+110.58 LOG t= 80.8 integ_m=  62.7 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+111.53 LOG t= 81.8 integ_m=  63.5 speed=30 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+112.48 LOG t= 82.7 integ_m=  64.2 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+113.43 LOG t= 83.7 integ_m=  65.0 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+114.39 LOG t= 84.6 integ_m=  65.8 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+115.34 LOG t= 85.6 integ_m=  66.6 speed=30 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+116.29 LOG t= 86.5 integ_m=  67.3 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+117.24 LOG t= 87.5 integ_m=  68.1 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+118.19 LOG t= 88.4 integ_m=  68.9 speed=29 set=30 dist=54 energy=33 online=0 devstate=1 incl=0 pulse=0
+119.14 LOG t= 89.4 integ_m=  69.7 speed=30 set=30 dist=76 energy=33 online=0 devstate=1 incl=0 pulse=0
+120.09 LOG t= 90.3 integ_m=  70.4 speed=29 set=30 dist=77 energy=33 online=0 devstate=1 incl=0 pulse=0
+121.04 LOG t= 91.3 integ_m=  71.2 speed=29 set=30 dist=78 energy=33 online=0 devstate=1 incl=0 pulse=0
+121.99 LOG t= 92.2 integ_m=  72.0 speed=30 set=30 dist=79 energy=33 online=0 devstate=1 incl=0 pulse=0
+122.94 LOG t= 93.2 integ_m=  72.7 speed=29 set=30 dist=80 energy=33 online=0 devstate=1 incl=0 pulse=0
+123.90 LOG t= 94.1 integ_m=  73.5 speed=29 set=30 dist=80 energy=33 online=0 devstate=1 incl=0 pulse=0
+124.85 LOG t= 95.1 integ_m=  74.3 speed=29 set=30 dist=81 energy=33 online=0 devstate=1 incl=0 pulse=0
+125.80 LOG t= 96.0 integ_m=  75.1 speed=30 set=30 dist=82 energy=33 online=0 devstate=1 incl=0 pulse=0
+126.75 LOG t= 97.0 integ_m=  75.8 speed=29 set=30 dist=83 energy=46 online=0 devstate=1 incl=0 pulse=0
+127.70 LOG t= 97.9 integ_m=  76.6 speed=29 set=30 dist=84 energy=46 online=0 devstate=1 incl=0 pulse=0
+128.66 LOG t= 98.9 integ_m=  77.4 speed=29 set=30 dist=85 energy=46 online=0 devstate=1 incl=0 pulse=0
+129.61 LOG t= 99.8 integ_m=  78.1 speed=29 set=30 dist=85 energy=46 online=0 devstate=1 incl=0 pulse=0
+130.56 LOG t=100.8 integ_m=  78.9 speed=29 set=30 dist=86 energy=46 online=0 devstate=1 incl=0 pulse=0
+131.51 LOG t=101.8 integ_m=  79.7 speed=29 set=30 dist=87 energy=50 online=0 devstate=1 incl=0 pulse=0
+132.46 LOG t=102.7 integ_m=  80.4 speed=29 set=30 dist=88 energy=50 online=0 devstate=1 incl=0 pulse=0
+133.41 LOG t=103.7 integ_m=  81.2 speed=29 set=30 dist=89 energy=50 online=0 devstate=1 incl=0 pulse=0
+134.36 LOG t=104.6 integ_m=  82.0 speed=29 set=30 dist=90 energy=50 online=0 devstate=1 incl=0 pulse=0
+135.31 LOG t=105.6 integ_m=  82.7 speed=29 set=30 dist=90 energy=50 online=0 devstate=1 incl=0 pulse=0
+136.26 LOG t=106.5 integ_m=  83.5 speed=29 set=30 dist=90 energy=50 online=0 devstate=1 incl=0 pulse=0
+137.21 LOG t=107.5 integ_m=  84.3 speed=30 set=30 dist=91 energy=50 online=0 devstate=1 incl=0 pulse=0
+138.16 LOG t=108.4 integ_m=  85.1 speed=29 set=30 dist=92 energy=50 online=0 devstate=1 incl=0 pulse=0
+139.11 LOG t=109.4 integ_m=  85.8 speed=29 set=30 dist=93 energy=50 online=0 devstate=1 incl=0 pulse=0
+140.07 LOG t=110.3 integ_m=  86.6 speed=29 set=30 dist=94 energy=50 online=0 devstate=1 incl=0 pulse=0
+141.02 LOG t=111.3 integ_m=  87.4 speed=30 set=30 dist=95 energy=54 online=0 devstate=1 incl=0 pulse=0
+141.97 LOG t=112.2 integ_m=  88.1 speed=29 set=30 dist=95 energy=54 online=0 devstate=1 incl=0 pulse=0
+142.92 LOG t=113.2 integ_m=  88.9 speed=29 set=30 dist=96 energy=54 online=0 devstate=1 incl=0 pulse=0
+143.87 LOG t=114.1 integ_m=  89.7 speed=29 set=30 dist=97 energy=54 online=0 devstate=1 incl=0 pulse=0
+144.82 LOG t=115.1 integ_m=  90.4 speed=29 set=30 dist=98 energy=54 online=0 devstate=1 incl=0 pulse=0
+145.77 LOG t=116.0 integ_m=  91.2 speed=29 set=30 dist=99 energy=54 online=0 devstate=1 incl=0 pulse=0
+146.72 LOG t=117.0 integ_m=  92.0 speed=30 set=30 dist=100 energy=54 online=0 devstate=1 incl=0 pulse=0
+147.67 LOG t=117.9 integ_m=  92.8 speed=29 set=30 dist=100 energy=54 online=0 devstate=1 incl=0 pulse=0
+148.62 LOG t=118.9 integ_m=  93.5 speed=29 set=30 dist=100 energy=54 online=0 devstate=1 incl=0 pulse=0
+149.57 LOG t=119.8 integ_m=  94.3 speed=29 set=30 dist=101 energy=58 online=0 devstate=1 incl=0 pulse=0
+149.58 SAY Encore une minute.
+150.53 LOG t=120.8 integ_m=  95.1 speed=29 set=30 dist=102 energy=58 online=0 devstate=1 incl=0 pulse=0
+151.48 LOG t=121.7 integ_m=  95.8 speed=29 set=30 dist=103 energy=58 online=0 devstate=1 incl=0 pulse=0
+152.43 LOG t=122.7 integ_m=  96.6 speed=29 set=30 dist=105 energy=58 online=0 devstate=1 incl=0 pulse=0
+153.38 LOG t=123.6 integ_m=  97.4 speed=29 set=30 dist=105 energy=58 online=0 devstate=1 incl=0 pulse=0
+154.34 LOG t=124.6 integ_m=  98.1 speed=29 set=30 dist=106 energy=58 online=0 devstate=1 incl=0 pulse=0
+155.29 LOG t=125.5 integ_m=  98.9 speed=29 set=30 dist=107 energy=58 online=0 devstate=1 incl=0 pulse=0
+156.23 LOG t=126.5 integ_m=  99.7 speed=29 set=30 dist=108 energy=58 online=0 devstate=1 incl=0 pulse=0
+157.18 LOG t=127.4 integ_m= 100.5 speed=30 set=30 dist=109 energy=63 online=0 devstate=1 incl=0 pulse=0
+158.14 LOG t=128.4 integ_m= 101.2 speed=29 set=30 dist=110 energy=63 online=0 devstate=1 incl=0 pulse=0
+159.09 LOG t=129.3 integ_m= 102.0 speed=29 set=30 dist=110 energy=63 online=0 devstate=1 incl=0 pulse=0
+160.04 LOG t=130.3 integ_m= 102.8 speed=29 set=30 dist=110 energy=63 online=0 devstate=1 incl=0 pulse=0
+160.99 LOG t=131.2 integ_m= 103.5 speed=30 set=30 dist=111 energy=63 online=0 devstate=1 incl=0 pulse=0
+161.94 LOG t=132.2 integ_m= 104.3 speed=30 set=30 dist=112 energy=63 online=0 devstate=1 incl=0 pulse=0
+162.89 LOG t=133.1 integ_m= 105.1 speed=29 set=30 dist=112 energy=63 online=0 devstate=1 incl=0 pulse=0
+163.84 LOG t=134.1 integ_m= 105.9 speed=29 set=30 dist=112 energy=63 online=0 devstate=1 incl=0 pulse=0
+164.79 LOG t=135.0 integ_m= 106.6 speed=29 set=30 dist=112 energy=63 online=0 devstate=1 incl=0 pulse=0
+165.75 LOG t=136.0 integ_m= 107.4 speed=29 set=30 dist=115 energy=63 online=0 devstate=1 incl=0 pulse=0
+166.70 LOG t=136.9 integ_m= 108.2 speed=29 set=30 dist=115 energy=63 online=0 devstate=1 incl=0 pulse=0
+167.65 LOG t=137.9 integ_m= 108.9 speed=29 set=30 dist=116 energy=67 online=0 devstate=1 incl=0 pulse=0
+168.60 LOG t=138.8 integ_m= 109.7 speed=29 set=30 dist=117 energy=67 online=0 devstate=1 incl=0 pulse=0
+169.55 LOG t=139.8 integ_m= 110.5 speed=29 set=30 dist=118 energy=67 online=0 devstate=1 incl=0 pulse=0
+170.50 LOG t=140.7 integ_m= 111.3 speed=30 set=30 dist=119 energy=67 online=0 devstate=1 incl=0 pulse=0
+171.45 LOG t=141.7 integ_m= 112.0 speed=29 set=31 dist=120 energy=67 online=0 devstate=1 incl=0 pulse=0
+172.40 LOG t=142.6 integ_m= 112.8 speed=29 set=31 dist=120 energy=67 online=0 devstate=1 incl=0 pulse=0
+173.35 LOG t=143.6 integ_m= 113.6 speed=29 set=31 dist=121 energy=67 online=0 devstate=1 incl=0 pulse=0
+174.30 LOG t=144.5 integ_m= 114.3 speed=30 set=30 dist=122 energy=67 online=0 devstate=1 incl=0 pulse=0
+175.25 LOG t=145.5 integ_m= 115.1 speed=29 set=30 dist=123 energy=71 online=0 devstate=1 incl=0 pulse=0
+176.20 LOG t=146.4 integ_m= 115.9 speed=29 set=30 dist=124 energy=71 online=0 devstate=1 incl=0 pulse=0
+177.16 LOG t=147.4 integ_m= 116.6 speed=29 set=30 dist=125 energy=71 online=0 devstate=1 incl=0 pulse=0
+178.11 LOG t=148.3 integ_m= 117.4 speed=29 set=30 dist=126 energy=71 online=0 devstate=1 incl=0 pulse=0
+179.06 LOG t=149.3 integ_m= 118.2 speed=29 set=30 dist=126 energy=71 online=0 devstate=1 incl=0 pulse=0
+180.01 LOG t=150.2 integ_m= 118.9 speed=29 set=30 dist=127 energy=71 online=0 devstate=1 incl=0 pulse=0
+180.96 LOG t=151.2 integ_m= 119.7 speed=29 set=30 dist=128 energy=71 online=0 devstate=1 incl=0 pulse=0
+181.91 LOG t=152.2 integ_m= 120.5 speed=30 set=30 dist=129 energy=71 online=0 devstate=1 incl=0 pulse=0
+182.86 LOG t=153.1 integ_m= 121.3 speed=29 set=30 dist=130 energy=71 online=0 devstate=1 incl=0 pulse=0
+183.81 LOG t=154.1 integ_m= 122.1 speed=30 set=30 dist=130 energy=71 online=0 devstate=1 incl=0 pulse=0
+184.76 LOG t=155.0 integ_m= 122.8 speed=29 set=30 dist=131 energy=75 online=0 devstate=1 incl=0 pulse=0
+185.71 LOG t=156.0 integ_m= 123.6 speed=29 set=30 dist=132 energy=75 online=0 devstate=1 incl=0 pulse=0
+186.66 LOG t=156.9 integ_m= 124.4 speed=29 set=30 dist=133 energy=75 online=0 devstate=1 incl=0 pulse=0
+187.61 LOG t=157.9 integ_m= 125.1 speed=29 set=30 dist=134 energy=75 online=0 devstate=1 incl=0 pulse=0
+188.56 LOG t=158.8 integ_m= 125.9 speed=29 set=30 dist=135 energy=75 online=0 devstate=1 incl=0 pulse=0
+189.51 LOG t=159.8 integ_m= 126.7 speed=29 set=30 dist=136 energy=75 online=0 devstate=1 incl=0 pulse=0
+190.46 LOG t=160.7 integ_m= 127.4 speed=29 set=30 dist=136 energy=75 online=0 devstate=1 incl=0 pulse=0
+191.41 LOG t=161.7 integ_m= 128.2 speed=29 set=30 dist=137 energy=75 online=0 devstate=1 incl=0 pulse=0
+192.36 LOG t=162.6 integ_m= 129.0 speed=29 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+193.31 LOG t=163.6 integ_m= 129.7 speed=30 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+194.27 LOG t=164.5 integ_m= 130.5 speed=29 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+195.22 LOG t=165.5 integ_m= 131.3 speed=29 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+196.17 LOG t=166.4 integ_m= 132.0 speed=29 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+197.12 LOG t=167.4 integ_m= 132.8 speed=29 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+198.07 LOG t=168.3 integ_m= 133.6 speed=29 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+199.02 LOG t=169.3 integ_m= 134.3 speed=29 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+199.97 LOG t=170.2 integ_m= 135.1 speed=30 set=30 dist=138 energy=79 online=0 devstate=1 incl=0 pulse=0
+200.92 LOG t=171.2 integ_m= 135.9 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+201.87 LOG t=172.1 integ_m= 136.7 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+202.82 LOG t=173.1 integ_m= 137.4 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+203.77 LOG t=174.0 integ_m= 138.2 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+204.73 LOG t=175.0 integ_m= 139.0 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+205.68 LOG t=175.9 integ_m= 139.7 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+206.63 LOG t=176.9 integ_m= 140.5 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+207.58 LOG t=177.8 integ_m= 141.3 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+208.53 LOG t=178.8 integ_m= 142.1 speed=30 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+209.48 LOG t=179.7 integ_m= 142.8 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+210.43 LOG t=180.7 integ_m= 143.6 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+210.43 == LOG end: integrated distance from SpeedGet = 143.6 m over 181 s
+210.43 SAY Je coupe le Bluetooth maintenant. Continuez à marcher, et regardez si le tapis s'arrête.
+210.44 DISCONNECTED
+210.44 == link dropped at 210.4, waiting 25 s
+235.44 SAY Je me reconnecte.
+236.18 connected
+238.19 AFTER t=  1.0 integ_m=   0.8 speed=29 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+238.19 SAY Reconnecté. Arrêtez le tapis depuis la console. Notez la distance et les calories affichées. Puis retirez la clé de sécurité cinq secondes, et remettez-la.
+239.15 AFTER t=  1.9 integ_m=   1.6 speed=30 set=30 dist=138 energy=84 online=0 devstate=1 incl=0 pulse=0
+240.10 AFTER t=  2.9 integ_m=   2.4 speed=30 set=30 dist=177 energy=100 online=0 devstate=1 incl=0 pulse=0
+241.05 AFTER t=  3.8 integ_m=   3.1 speed=29 set=30 dist=178 energy=100 online=0 devstate=1 incl=0 pulse=0
+242.00 AFTER t=  4.8 integ_m=   3.9 speed=29 set=30 dist=178 energy=100 online=0 devstate=1 incl=0 pulse=0
+242.95 AFTER t=  5.7 integ_m=   4.7 speed=29 set=30 dist=180 energy=100 online=0 devstate=1 incl=0 pulse=0
+243.90 AFTER t=  6.7 integ_m=   5.4 speed=29 set=30 dist=180 energy=100 online=0 devstate=1 incl=0 pulse=0
+244.86 AFTER t=  7.6 integ_m=   6.2 speed=29 set=30 dist=181 energy=105 online=0 devstate=1 incl=0 pulse=0
+245.80 AFTER t=  8.6 integ_m=   7.0 speed=30 set=30 dist=182 energy=105 online=0 devstate=1 incl=0 pulse=0
+246.75 AFTER t=  9.5 integ_m=   7.8 speed=30 set=30 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+247.70 AFTER t= 10.5 integ_m=   8.5 speed=28 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+248.65 AFTER t= 11.4 integ_m=   9.2 speed=28 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+249.60 AFTER t= 12.4 integ_m=  10.0 speed=28 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+250.55 AFTER t= 13.3 integ_m=  10.6 speed=24 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+251.50 AFTER t= 14.3 integ_m=  11.1 speed=20 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+252.45 AFTER t= 15.2 integ_m=  11.7 speed=20 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+253.41 AFTER t= 16.2 integ_m=  12.1 speed=17 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+254.35 AFTER t= 17.1 integ_m=  12.6 speed=17 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+255.31 AFTER t= 18.1 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+256.26 AFTER t= 19.0 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+257.21 AFTER t= 20.0 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+258.16 AFTER t= 20.9 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+259.11 AFTER t= 21.9 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+260.06 AFTER t= 22.8 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+261.01 AFTER t= 23.8 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+261.96 AFTER t= 24.7 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+262.91 AFTER t= 25.7 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+263.86 AFTER t= 26.6 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+264.81 AFTER t= 27.6 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+265.77 AFTER t= 28.5 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+266.72 AFTER t= 29.5 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+267.67 AFTER t= 30.4 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+268.62 AFTER t= 31.4 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+269.57 AFTER t= 32.3 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+270.52 AFTER t= 33.3 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+271.47 AFTER t= 34.2 integ_m=  12.6 speed=0 set=0 dist=182 energy=105 online=1 devstate=1 incl=0 pulse=0
+271.86 DISCONNECTED
+271.88 CRASH BleakError('Service Discovery has not been performed yet')
+275.50 END

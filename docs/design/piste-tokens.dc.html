@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Kettler RUN 7 — direction et tokens</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#3CC6FF}a:hover{color:#8EDDFF}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 3200px; box-sizing: border-box; padding: 72px; background: #0A0D12; color: #F3F6FA; font-family: Barlow, -apple-system, system-ui, sans-serif; display: flex; flex-direction: column; gap: 56px">
+
+  <header style="display: flex; flex-direction: column; gap: 16px; max-width: 1040px">
+    <div style="font-size: 15px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8692A6">Kettler RUN 7 · application desktop Tauri · Svelte 5</div>
+    <h1 style="margin: 0; font-family: 'Barlow Semi Condensed', system-ui, sans-serif; font-weight: 700; font-size: 88px; line-height: 0.95; letter-spacing: -0.01em">Direction « Piste »</h1>
+    <p style="margin: 0; font-size: 22px; line-height: 1.45; color: #A7B1C2; text-wrap: pretty">Un tableau de bord de piste : fond graphite, chiffres géants en Barlow Semi Condensed à chasse fixe, un seul accent bleu électrique pour la donnée et la sélection. Les couleurs vives sont réservées aux états, pour qu’une couleur signifie toujours la même chose, même aperçue du coin de l’œil à 2 m.</p>
+  </header>
+
+  <section style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px">
+    <div style="background: #12171F; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 10px">
+      <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; font-weight: 700">Lisible à 2 m</div>
+      <div style="font-size: 18px; line-height: 1.45; color: #A7B1C2">Vitesse entre 120 et 260 px, chiffres secondaires 44 px minimum. Chiffres à chasse fixe : rien ne bouge quand la valeur change. Contraste des chiffres supérieur à 15:1.</div>
+    </div>
+    <div style="background: #12171F; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 10px">
+      <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; font-weight: 700">Facile à viser</div>
+      <div style="font-size: 18px; line-height: 1.45; color: #A7B1C2">Boutons de 52 à 64 px de haut, action principale de 80 à 104 px, 8 px entre deux cibles. Les commandes vivent dans une colonne fixe à droite : la main sait où aller.</div>
+    </div>
+    <div style="background: #12171F; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 10px">
+      <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 30px; font-weight: 700">Une couleur, un sens</div>
+      <div style="font-size: 18px; line-height: 1.45; color: #A7B1C2">Vert démarrer, ambre pause, rouge stop et alertes critiques, orange avertissement, bleu donnée et sélection. Les états diffèrent aussi en clarté, pas seulement en teinte.</div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 24px">
+    <h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 44px; font-weight: 700">Couleurs</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+
+      <div style="background: #12171F; border: 1px solid #263142; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline"><div style="font-size: 26px; font-weight: 700">Sombre</div><div style="font-size: 15px; color: #8692A6">prefers-color-scheme: dark</div></div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; font-size: 15px">
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #0A0D12; border: 1px solid #263142; flex-shrink: 0"></span><span><b>--kr-bg</b><br><span style="color: #8692A6">#0A0D12</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #3CC6FF; flex-shrink: 0"></span><span><b>--kr-accent</b><br><span style="color: #8692A6">#3CC6FF · encre #03141C</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #12171F; border: 1px solid #263142; flex-shrink: 0"></span><span><b>--kr-surface</b><br><span style="color: #8692A6">#12171F</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #2FC27A; flex-shrink: 0"></span><span><b>--kr-go</b> démarrer<br><span style="color: #8692A6">#2FC27A · encre #03170C</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #1A212C; border: 1px solid #263142; flex-shrink: 0"></span><span><b>--kr-surface-2</b> boutons<br><span style="color: #8692A6">#1A212C</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #F6B526; flex-shrink: 0"></span><span><b>--kr-pause</b> ambre<br><span style="color: #8692A6">#F6B526 · encre #241700</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #263142; flex-shrink: 0"></span><span><b>--kr-line</b><br><span style="color: #8692A6">#263142</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #D42F35; flex-shrink: 0"></span><span><b>--kr-stop</b> rouge<br><span style="color: #8692A6">#D42F35 · profond #8F1418</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #F3F6FA; flex-shrink: 0"></span><span><b>--kr-text</b><br><span style="color: #8692A6">#F3F6FA · -2 #A7B1C2 · -3 #8692A6</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #FF8A3D; flex-shrink: 0"></span><span><b>--kr-warn</b> orange<br><span style="color: #8692A6">#FF8A3D · encre #2A1000</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #3F4857; flex-shrink: 0"></span><span><b>--kr-digit-off</b> chiffres grisés<br><span style="color: #8692A6">#3F4857</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #1F2733; border: 1px solid #263142; flex-shrink: 0"></span><span><b>--kr-track</b> jauges<br><span style="color: #8692A6">#1F2733</span></span></div>
+        </div>
+      </div>
+
+      <div style="background: #FFFFFF; color: #0B1017; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline"><div style="font-size: 26px; font-weight: 700">Clair</div><div style="font-size: 15px; color: #5E6A7B">valeurs par défaut de :root</div></div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; font-size: 15px">
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #EDF0F4; border: 1px solid #D3DAE3; flex-shrink: 0"></span><span><b>--kr-bg</b><br><span style="color: #5E6A7B">#EDF0F4</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #0A6FBF; flex-shrink: 0"></span><span><b>--kr-accent</b><br><span style="color: #5E6A7B">#0A6FBF · encre #FFFFFF</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #FFFFFF; border: 1px solid #D3DAE3; flex-shrink: 0"></span><span><b>--kr-surface</b><br><span style="color: #5E6A7B">#FFFFFF</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #187A46; flex-shrink: 0"></span><span><b>--kr-go</b> démarrer<br><span style="color: #5E6A7B">#187A46 · encre #FFFFFF</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #EBEFF4; border: 1px solid #D3DAE3; flex-shrink: 0"></span><span><b>--kr-surface-2</b> boutons<br><span style="color: #5E6A7B">#EBEFF4</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #F2A900; flex-shrink: 0"></span><span><b>--kr-pause</b> ambre<br><span style="color: #5E6A7B">#F2A900 · encre #231600</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #D3DAE3; flex-shrink: 0"></span><span><b>--kr-line</b><br><span style="color: #5E6A7B">#D3DAE3</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #C8282E; flex-shrink: 0"></span><span><b>--kr-stop</b> rouge<br><span style="color: #5E6A7B">#C8282E · profond #8A1519</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #0B1017; flex-shrink: 0"></span><span><b>--kr-text</b><br><span style="color: #5E6A7B">#0B1017 · -2 #46505F · -3 #5E6A7B</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #F07A1A; flex-shrink: 0"></span><span><b>--kr-warn</b> orange<br><span style="color: #5E6A7B">#F07A1A · encre #2A1000</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #BFC6D0; flex-shrink: 0"></span><span><b>--kr-digit-off</b> chiffres grisés<br><span style="color: #5E6A7B">#BFC6D0</span></span></div>
+          <div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border-radius: 10px; background: #E3E8EE; border: 1px solid #D3DAE3; flex-shrink: 0"></span><span><b>--kr-track</b> jauges<br><span style="color: #5E6A7B">#E3E8EE</span></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 24px; align-items: start">
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 44px; font-weight: 700">Typographie</h2>
+      <div style="background: #12171F; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 22px">
+        <div style="font-size: 16px; color: #A7B1C2; line-height: 1.5">Chiffres : <b style="color: #F3F6FA">Barlow Semi Condensed 600</b>, <code style="font-family: 'JetBrains Mono', monospace; font-size: 14px">font-variant-numeric: tabular-nums</code>. Interface : <b style="color: #F3F6FA">Barlow 500–700</b>. Repli : SF Pro / system-ui. Tailles fluides en <code style="font-family: 'JetBrains Mono', monospace; font-size: 14px">vh</code>, valeurs indiquées à 900×680 → 1440×900.</div>
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; border-top: 1px solid #263142; padding-top: 18px">
+          <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 600; font-size: 200px; line-height: 0.8; font-variant-numeric: tabular-nums; letter-spacing: -0.02em">12,5</div>
+          <div style="text-align: right; font-size: 15px; color: #8692A6; line-height: 1.6"><b style="color: #F3F6FA">--kr-fs-hero</b><br>clamp(120px, 25vh, 260px)<br>170 → 225 px · interligne 0,8</div>
+        </div>
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; border-top: 1px solid #263142; padding-top: 18px">
+          <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 600; font-size: 84px; line-height: 0.9; font-variant-numeric: tabular-nums">1:02:45</div>
+          <div style="text-align: right; font-size: 15px; color: #8692A6; line-height: 1.6"><b style="color: #F3F6FA">--kr-fs-metric</b><br>clamp(44px, 9vh, 92px)<br>61 → 81 px</div>
+        </div>
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; border-top: 1px solid #263142; padding-top: 18px">
+          <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-weight: 600; font-size: 64px; line-height: 0.9; font-variant-numeric: tabular-nums">2,5</div>
+          <div style="text-align: right; font-size: 15px; color: #8692A6; line-height: 1.6"><b style="color: #F3F6FA">--kr-fs-metric-s</b><br>clamp(34px, 7.2vh, 68px)<br>49 → 65 px</div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid #263142; padding-top: 18px">
+          <div style="font-size: 32px; font-weight: 700">Démarrer</div>
+          <div style="text-align: right; font-size: 15px; color: #8692A6; line-height: 1.6"><b style="color: #F3F6FA">--kr-fs-primary</b> · Barlow 700<br>clamp(24px, 3.6vh, 32px)</div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid #263142; padding-top: 18px">
+          <div style="font-family: 'Barlow Semi Condensed', sans-serif; font-size: 22px; font-weight: 600">+0,5 · 3 · 4 · 5 · 6</div>
+          <div style="text-align: right; font-size: 15px; color: #8692A6; line-height: 1.6"><b style="color: #F3F6FA">--kr-fs-btn</b><br>clamp(18px, 2.6vh, 22px)</div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid #263142; padding-top: 18px">
+          <div style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 15px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #A7B1C2">Vitesse</span><span style="font-size: 15px; color: #8692A6">km/h</span></div>
+          <div style="text-align: right; font-size: 15px; color: #8692A6; line-height: 1.6"><b style="color: #F3F6FA">--kr-fs-label</b> · 700 · capitales +0,1em<br>clamp(13px, 1.8vh, 15px)</div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; border-top: 1px solid #263142; padding-top: 18px">
+          <div style="font-size: 16px; color: #A7B1C2">consigne 5,0 · unité non confirmée</div>
+          <div style="text-align: right; font-size: 15px; color: #8692A6; line-height: 1.6"><b style="color: #F3F6FA">--kr-fs-sub</b> 14 → 16 px · <b style="color: #F3F6FA">--kr-fs-hint</b> 13 px</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 44px; font-weight: 700">Espaces, rayons, tailles</h2>
+      <div style="background: #12171F; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 22px; font-size: 15px; color: #A7B1C2">
+        <div style="display: flex; align-items: flex-end; gap: 14px">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 4px; height: 4px; background: #3CC6FF"></span><span>1 · 4</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; background: #3CC6FF"></span><span>2 · 8</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 12px; height: 12px; background: #3CC6FF"></span><span>3 · 12</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 16px; height: 16px; background: #3CC6FF"></span><span>4 · 16</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 24px; height: 24px; background: #3CC6FF"></span><span>5 · 24</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><span style="width: 32px; height: 32px; background: #3CC6FF"></span><span>6 · 32</span></div>
+        </div>
+        <div style="line-height: 1.6"><b style="color: #F3F6FA">--kr-pad</b> clamp(16px, 2.6vh, 24px) · <b style="color: #F3F6FA">--kr-gap</b> clamp(12px, 1.8vh, 16px)</div>
+        <div style="display: flex; gap: 14px; border-top: 1px solid #263142; padding-top: 18px">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span style="width: 64px; height: 52px; border-radius: 10px; background: #1A212C; border: 1px solid #263142"></span><span>sm · 10</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span style="width: 64px; height: 52px; border-radius: 14px; background: #1A212C; border: 1px solid #263142"></span><span>md · 14</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span style="width: 64px; height: 52px; border-radius: 20px; background: #1A212C; border: 1px solid #263142"></span><span>lg · 20</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><span style="width: 64px; height: 52px; border-radius: 999px; background: #1A212C; border: 1px solid #263142"></span><span>pill</span></div>
+        </div>
+        <div style="border-top: 1px solid #263142; padding-top: 18px; line-height: 1.8">
+          <b style="color: #F3F6FA">--kr-header-h</b> clamp(56px, 7vh, 64px)<br>
+          <b style="color: #F3F6FA">--kr-rail-w</b> clamp(300px, 26vw, 380px)<br>
+          <b style="color: #F3F6FA">--kr-btn-h</b> clamp(52px, 7vh, 64px)<br>
+          <b style="color: #F3F6FA">--kr-primary-h</b> clamp(80px, 11.5vh, 104px)<br>
+          Grille gauche : vitesse 50 % · temps / distance 27 % · inclinaison / calories / pouls 23 %
+        </div>
+      </div>
+
+      <h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 44px; font-weight: 700">Mouvement</h2>
+      <div style="background: #12171F; border-radius: 20px; padding: 28px; font-size: 16px; line-height: 1.6; color: #A7B1C2; display: flex; flex-direction: column; gap: 10px">
+        <div>Chiffres : aucun défilement, la valeur change en place (chasse fixe).</div>
+        <div>Changement d’état et survol : 120–220 ms, <code style="font-family: 'JetBrains Mono', monospace; font-size: 14px">cubic-bezier(.2,.7,.2,1)</code>. Jauge de vitesse : largeur en 300 ms.</div>
+        <div>Indicateur de recherche ou reconnexion : rotation 0,9 s linéaire.</div>
+        <div><b style="color: #F3F6FA">Seul clignotement :</b> l’alerte critique alterne rouge / rouge profond toutes les 0,5 s, avec un liseré rouge de 4 px autour de la fenêtre.</div>
+        <div><code style="font-family: 'JetBrains Mono', monospace; font-size: 14px">prefers-reduced-motion</code> : tout est figé ; l’alerte reste rouge fixe, le liseré reste visible.</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 24px">
+    <h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 44px; font-weight: 700">Action principale selon l’état</h2>
+    <div style="background: #12171F; border-radius: 20px; padding: 8px 28px; font-size: 17px">
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding: 18px 0; border-bottom: 1px solid #263142; color: #8692A6; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase"><span>État</span><span>Colonne de droite, en haut</span><span>Bouton d’arrêt</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding: 18px 0; border-bottom: 1px solid #263142; align-items: center"><span>Déconnecté · recherche · connexion</span><span style="display: flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #3CC6FF"></span>Connecter (bleu), puis indicateur d’attente</span><span style="color: #A7B1C2">aucun</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding: 18px 0; border-bottom: 1px solid #263142; align-items: center"><span>Connecté, bande arrêtée</span><span style="display: flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #2FC27A"></span>Démarrer + rappel « clé en place, pieds sur les rebords »</span><span style="color: #A7B1C2">aucun</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding: 18px 0; border-bottom: 1px solid #263142; align-items: center"><span>Compte à rebours · bande en marche</span><span style="display: flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #F6B526"></span>PAUSE pleine largeur</span><span>PAUSE, jamais désactivé</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding: 18px 0; border-bottom: 1px solid #263142; align-items: center"><span>Après l’appui · séance en pause</span><span style="display: flex; align-items: center; gap: 10px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #2FC27A"></span><span style="width: 14px; height: 14px; border-radius: 4px; background: #D42F35"></span>Reprendre + STOP « Terminer la séance »</span><span>STOP, jamais désactivé</span></div>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; padding: 18px 0; align-items: center"><span>Reconnexion</span><span style="color: #A7B1C2">Le bouton d’arrêt affiché reste en place ; Reprendre et les réglages sont désactivés</span><span>toujours affiché</span></div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 24px">
+    <h2 style="margin: 0; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 44px; font-weight: 700">Variables CSS</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+<pre style="margin: 0; background: #12171F; border: 1px solid #263142; border-radius: 20px; padding: 28px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; line-height: 1.65; color: #D6DCE6; white-space: pre-wrap">:root {
+  color-scheme: light dark;
+  /* Surfaces (clair par défaut) */
+  --kr-bg: #EDF0F4;
+  --kr-surface: #FFFFFF;
+  --kr-surface-2: #EBEFF4;
+  --kr-surface-3: #DDE3EA;
+  --kr-line: #D3DAE3;
+  --kr-track: #E3E8EE;
+  /* Texte */
+  --kr-text: #0B1017;
+  --kr-text-2: #46505F;
+  --kr-text-3: #5E6A7B;
+  --kr-digit-off: #BFC6D0;
+  /* Accent et états */
+  --kr-accent: #0A6FBF;  --kr-accent-ink: #FFFFFF;
+  --kr-go: #187A46;      --kr-go-ink: #FFFFFF;
+  --kr-pause: #F2A900;   --kr-pause-ink: #231600;
+  --kr-stop: #C8282E;    --kr-stop-ink: #FFFFFF;
+  --kr-stop-deep: #8A1519;
+  --kr-warn: #F07A1A;    --kr-warn-ink: #2A1000;
+  /* Typographie */
+  --kr-font-num: "Barlow Semi Condensed", "SF Pro Display", system-ui, sans-serif;
+  --kr-font-ui: "Barlow", -apple-system, system-ui, sans-serif;
+  --kr-fs-hero: clamp(120px, 25vh, 260px);
+  --kr-fs-metric: clamp(44px, 9vh, 92px);
+  --kr-fs-metric-s: clamp(34px, 7.2vh, 68px);
+  --kr-fs-primary: clamp(24px, 3.6vh, 32px);
+  --kr-fs-btn: clamp(18px, 2.6vh, 22px);
+  --kr-fs-label: clamp(13px, 1.8vh, 15px);
+  --kr-fs-sub: clamp(14px, 1.9vh, 16px);
+  --kr-fs-hint: 13px;
+  /* Espacements */
+  --kr-sp-1: 4px;  --kr-sp-2: 8px;  --kr-sp-3: 12px;
+  --kr-sp-4: 16px; --kr-sp-5: 24px; --kr-sp-6: 32px;
+  --kr-pad: clamp(16px, 2.6vh, 24px);
+  --kr-gap: clamp(12px, 1.8vh, 16px);
+  /* Tailles */
+  --kr-header-h: clamp(56px, 7vh, 64px);
+  --kr-rail-w: clamp(300px, 26vw, 380px);
+  --kr-btn-h: clamp(52px, 7vh, 64px);
+  --kr-primary-h: clamp(80px, 11.5vh, 104px);
+  /* Rayons */
+  --kr-r-sm: 10px; --kr-r-md: 14px;
+  --kr-r-lg: 20px; --kr-r-pill: 999px;
+  /* Mouvement */
+  --kr-ease: cubic-bezier(.2, .7, .2, 1);
+  --kr-dur-fast: 120ms;
+  --kr-dur: 220ms;
+}</pre>
+<pre style="margin: 0; background: #12171F; border: 1px solid #263142; border-radius: 20px; padding: 28px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; line-height: 1.65; color: #D6DCE6; white-space: pre-wrap">@media (prefers-color-scheme: dark) {
+  :root {
+    --kr-bg: #0A0D12;
+    --kr-surface: #12171F;
+    --kr-surface-2: #1A212C;
+    --kr-surface-3: #232C3A;
+    --kr-line: #263142;
+    --kr-track: #1F2733;
+    --kr-text: #F3F6FA;
+    --kr-text-2: #A7B1C2;
+    --kr-text-3: #8692A6;
+    --kr-digit-off: #3F4857;
+    --kr-accent: #3CC6FF;  --kr-accent-ink: #03141C;
+    --kr-go: #2FC27A;      --kr-go-ink: #03170C;
+    --kr-pause: #F6B526;   --kr-pause-ink: #241700;
+    --kr-stop: #D42F35;    --kr-stop-ink: #FFFFFF;
+    --kr-stop-deep: #8F1418;
+    --kr-warn: #FF8A3D;    --kr-warn-ink: #2A1000;
+  }
+}
+
+/* Chiffres : jamais de saut de largeur */
+.kr-num {
+  font-family: var(--kr-font-num);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: .85;
+}
+/* La vitesse suit aussi la largeur de sa carte */
+.kr-hero { container-type: size; }
+.kr-hero .kr-num {
+  font-size: min(var(--kr-fs-hero), 30cqi, 60cqh);
+}
+/* Liaison absente : chiffres grisés */
+.kr-app[data-liaison="off"] .kr-num {
+  color: var(--kr-digit-off);
+}
+button:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Seule animation clignotante */
+.kr-alerte { animation: kr-alerte 1s steps(1) infinite; }
+@keyframes kr-alerte {
+  50% { background: var(--kr-stop-deep); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}</pre>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

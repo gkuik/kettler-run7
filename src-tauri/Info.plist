@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Fusionné par Tauri dans l'Info.plist du bundle macOS. Sans cette clé,
+     macOS (TCC) tue l'application au premier accès Bluetooth. -->
+<plist version="1.0">
+<dict>
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>Kettler RUN 7 se connecte en Bluetooth à votre tapis de course pour le piloter.</string>
+</dict>
+</plist>
