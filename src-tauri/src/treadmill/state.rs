@@ -5,14 +5,17 @@
 //!   compteur de distance du tapis repart en arrière ;
 //! - transitions de connexion (dont `lost_while_running`) ;
 //! - préparation des consignes : arrondi à 0,1, bornage aux limites du tapis,
-//!   plafond de vitesse, refus si la bande ne tourne pas.
+//!   plafond de vitesse, refus si la bande ne tourne pas ;
+//! - déroulement du profil de course choisi (`profile::ProfileRun`) : quelles
+//!   consignes envoyer, et quand.
 //!
 //! La session Bluetooth (`session.rs`) ne fait que transporter des octets : toute
 //! décision de sécurité sur les valeurs envoyées est prise ici.
 
 use std::time::{Duration, Instant};
 
-use crate::dto::{ConnectionState, DeviceInfo, Limits, TreadmillSnapshot};
+use super::profile::ProfileRun;
+use crate::dto::{ConnectionState, DeviceInfo, Limits, RunProfile, TreadmillSnapshot};
 use crate::kettler::protocol::{Instruction, Message, ValueId};
 
 /// Plafond de vitesse par défaut (km/h).
@@ -136,6 +139,19 @@ pub struct Model {
     elapsed: Duration,
     last_tick: Option<Instant>,
     last_published: Option<TreadmillSnapshot>,
+    /// Profil de course choisi et sa progression.
+    profile: Option<ProfileRun>,
+    /// Une séquence de démarrage de l'application est en cours : une remise à
+    /// zéro du compteur de distance n'y est pas une fin de séance.
+    start_sequence: bool,
+}
+
+/// Consignes à envoyer pour le profil (brutes, déjà bornées et plafonnées) ;
+/// `None` = déjà en place sur le tapis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProfileOrder {
+    pub speed: Option<u16>,
+    pub incline: Option<u16>,
 }
 
 impl Default for Model {
@@ -164,6 +180,8 @@ impl Model {
             elapsed: Duration::ZERO,
             last_tick: None,
             last_published: None,
+            profile: None,
+            start_sequence: false,
         }
     }
 
@@ -171,6 +189,7 @@ impl Model {
     pub fn snapshot(&self) -> TreadmillSnapshot {
         let mut s = self.snap.clone();
         s.elapsed_s = self.elapsed.as_secs() as u32;
+        s.profile = self.profile.as_ref().map(ProfileRun::progress);
         s
     }
 
@@ -251,6 +270,11 @@ impl Model {
                     1 => Some(false),
                     _ => s.running, // valeur inconnue : on garde l'état précédent
                 };
+                if s.running == Some(false) {
+                    if let Some(run) = self.profile.as_mut() {
+                        run.on_stopped();
+                    }
+                }
             }
             Reading::SpeedGet(raw) => s.speed_kmh = Some(tenths(raw)),
             Reading::SpeedSet(raw) => s.target_speed_kmh = Some(tenths(raw)),
@@ -264,6 +288,9 @@ impl Model {
                 }
                 self.last_distance = Some(d);
                 s.distance_m = Some(d);
+                if let Some(run) = self.profile.as_mut() {
+                    run.on_distance(d, self.start_sequence);
+                }
             }
             Reading::Energy(raw) => s.energy_kcal = Some(tenths(raw)),
             Reading::Pulse(raw) => s.pulse_bpm = (raw != 0).then_some(raw),
@@ -334,6 +361,73 @@ impl Model {
             }
         }
         self.last_tick = Some(now);
+    }
+
+    // ── Profil de course ────────────────────────────────────────────────────
+
+    /// Choisit le profil à dérouler (`None` : plus de profil, les consignes
+    /// restent telles quelles). Le même profil, modifié, garde sa progression.
+    pub fn select_profile(&mut self, profile: Option<RunProfile>) {
+        self.profile = match (self.profile.take(), profile) {
+            (Some(mut run), Some(p)) if run.profile().id == p.id => {
+                run.replace_profile(p);
+                Some(run)
+            }
+            (_, Some(p)) => Some(ProfileRun::new(p)),
+            (_, None) => None,
+        };
+    }
+
+    pub fn profile_id(&self) -> Option<&str> {
+        self.profile.as_ref().map(|r| r.profile().id.as_str())
+    }
+
+    pub fn set_start_sequence(&mut self, on: bool) {
+        self.start_sequence = on;
+    }
+
+    /// Second arrêt, bande arrêtée : le tapis remet ses compteurs à zéro, la
+    /// séance est finie et le profil repart du début.
+    pub fn profile_session_ended(&mut self) {
+        if let Some(run) = self.profile.as_mut() {
+            run.restart();
+        }
+    }
+
+    /// L'utilisateur a changé une consigne : le profil la laisse jusqu'au segment suivant.
+    pub fn profile_manual(&mut self) {
+        if let Some(run) = self.profile.as_mut() {
+            run.on_manual();
+        }
+    }
+
+    /// Consignes à envoyer maintenant pour le profil, s'il y en a. Rien tant que
+    /// la bande ne tourne pas vraiment : liaison établie, Online relu à « en
+    /// marche », limites connues, et compte à rebours fini (consigne relue au
+    /// moins à la vitesse minimale : le tapis ignore les écritures avant).
+    pub fn profile_order(&mut self, now: Instant) -> Option<ProfileOrder> {
+        self.profile.as_ref()?;
+        self.ensure_running().ok()?;
+        let min = self.speed_min?;
+        let target_speed = self.snap.target_speed_kmh.and_then(to_tenths)?;
+        if target_speed < i64::from(min) {
+            return None;
+        }
+        let run = self.profile.as_ref()?;
+        let wanted = run.target(run.index());
+        let speed = self.speed_command(wanted.speed_kmh).ok()?;
+        let incline = self.incline_command(wanted.incline_pct).ok()?;
+        let target_incline = self.snap.target_incline_pct.and_then(to_tenths);
+        let speed_ok = target_speed == i64::from(speed);
+        let incline_ok = target_incline == Some(i64::from(incline));
+        let run = self.profile.as_mut()?;
+        if !run.step(now, speed_ok && incline_ok) {
+            return None;
+        }
+        Some(ProfileOrder {
+            speed: (!speed_ok).then_some(speed),
+            incline: (!incline_ok).then_some(incline),
+        })
     }
 
     // ── Préparation des commandes (aucune écriture ici) ─────────────────────
@@ -778,6 +872,101 @@ mod tests {
         m.set_error(Some("oups".into()));
         m.on_connected();
         assert_eq!(m.snapshot().last_error, None);
+    }
+
+    fn profil(segments: &[(u32, f32, f32)]) -> RunProfile {
+        use crate::dto::ProfileSegment;
+        RunProfile {
+            id: "p".into(),
+            name: "Profil".into(),
+            builtin: false,
+            segments: segments
+                .iter()
+                .map(|&(distance_m, speed_kmh, incline_pct)| ProfileSegment {
+                    distance_m,
+                    speed_kmh,
+                    incline_pct,
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn profil_attend_la_fin_du_compte_a_rebours() {
+        let t0 = Instant::now();
+        let mut m = running_model();
+        m.select_profile(Some(profil(&[(100, 4.0, 2.0)])));
+        m.apply(Reading::SpeedSet(0)); // compte à rebours : consigne encore à 0
+        m.apply(Reading::InclineSet(0));
+        assert_eq!(m.profile_order(t0), None);
+        m.apply(Reading::SpeedSet(8)); // bande partie à 0,8 km/h
+        assert_eq!(
+            m.profile_order(t0),
+            Some(ProfileOrder { speed: Some(40), incline: Some(20) })
+        );
+    }
+
+    #[test]
+    fn profil_borne_au_plafond_et_n_envoie_que_ce_qui_differe() {
+        let t0 = Instant::now();
+        let mut m = running_model();
+        m.set_speed_cap(5.0).unwrap();
+        m.select_profile(Some(profil(&[(100, 8.0, 1.0)])));
+        m.apply(Reading::SpeedSet(30));
+        m.apply(Reading::InclineSet(10));
+        assert_eq!(
+            m.profile_order(t0),
+            Some(ProfileOrder { speed: Some(50), incline: None }),
+            "plafonnée à 5,0 ; inclinaison déjà en place"
+        );
+        m.apply(Reading::SpeedSet(50));
+        assert_eq!(m.profile_order(t0 + Duration::from_secs(1)), None, "relue");
+        assert_eq!(m.snapshot().profile.unwrap().segment_index, 0);
+    }
+
+    #[test]
+    fn profil_rien_bande_arretee_ou_liaison_perdue() {
+        let t0 = Instant::now();
+        let mut m = running_model();
+        m.select_profile(Some(profil(&[(100, 4.0, 0.0)])));
+        m.apply(Reading::SpeedSet(8));
+        m.apply(Reading::Online(1));
+        assert_eq!(m.profile_order(t0), None);
+        m.apply(Reading::Online(0));
+        m.on_link_lost();
+        assert_eq!(m.profile_order(t0), None);
+    }
+
+    #[test]
+    fn profil_remise_a_zero_pendant_un_demarrage() {
+        let mut m = running_model();
+        m.select_profile(Some(profil(&[(100, 4.0, 0.0), (100, 5.0, 0.0)])));
+        m.apply(Reading::Distance(0));
+        m.apply(Reading::Distance(150));
+        m.set_start_sequence(true);
+        m.apply(Reading::Distance(0));
+        m.set_start_sequence(false);
+        assert_eq!(m.snapshot().profile.unwrap().done_m, 150);
+        m.apply(Reading::Distance(0)); // déjà à 0 : rien ne change
+        m.apply(Reading::Distance(30));
+        m.apply(Reading::Distance(0)); // fin de séance
+        assert_eq!(m.snapshot().profile.unwrap().done_m, 0);
+    }
+
+    #[test]
+    fn choix_du_profil() {
+        let mut m = running_model();
+        assert!(m.snapshot().profile.is_none());
+        m.select_profile(Some(profil(&[(100, 4.0, 0.0), (100, 5.0, 0.0)])));
+        m.apply(Reading::Distance(0));
+        m.apply(Reading::Distance(120));
+        // Le même profil, modifié : progression gardée.
+        m.select_profile(Some(profil(&[(100, 4.0, 0.0), (300, 5.0, 0.0)])));
+        let p = m.snapshot().profile.unwrap();
+        assert_eq!((p.done_m, p.total_m), (120, 400));
+        assert_eq!(m.profile_id(), Some("p"));
+        m.select_profile(None);
+        assert!(m.snapshot().profile.is_none());
     }
 
     #[test]

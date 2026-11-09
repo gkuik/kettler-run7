@@ -9,6 +9,7 @@ import {
   inclineStepUseful,
   isPaused,
   isStarting,
+  canEditProfiles,
   keyAction,
   nextIncline,
   nextSpeed,
@@ -188,12 +189,29 @@ describe("bornage de l'inclinaison", () => {
   });
 });
 
+describe("canEditProfiles", () => {
+  it("éditeur accessible bande arrêtée ou tapis déconnecté seulement", () => {
+    const base = emptySnapshot();
+    expect(canEditProfiles(base)).toBe(true);
+    expect(canEditProfiles({ ...base, connection: "connected", running: false })).toBe(true);
+    expect(canEditProfiles({ ...base, connection: "connected", running: true })).toBe(false);
+    expect(canEditProfiles({ ...base, connection: "connected", running: null })).toBe(false);
+    expect(canEditProfiles({ ...base, connection: "reconnecting", running: false })).toBe(false);
+    expect(canEditProfiles({ ...base, connection: "connected", running: false }, true)).toBe(false);
+  });
+});
+
 describe("keyAction", () => {
   it("Échap et Espace arrêtent toujours, même dans un champ", () => {
     expect(keyAction("Escape", false)).toBe("stop");
     expect(keyAction(" ", false)).toBe("stop");
     expect(keyAction("Escape", true)).toBe("stop");
     expect(keyAction(" ", true)).toBe("stop");
+  });
+
+  it("Espace tape une espace dans un champ texte de l'éditeur (Échap arrête toujours)", () => {
+    expect(keyAction(" ", true, true)).toBeNull();
+    expect(keyAction("Escape", true, true)).toBe("stop");
   });
 
   it("les flèches règlent la vitesse hors des champs", () => {

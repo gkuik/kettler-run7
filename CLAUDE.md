@@ -56,13 +56,16 @@ src-tauri/src/
   treadmill/session.rs session (btleplug ou simulateur) : scan, connexion, handshake, polling, écritures, reconnexion
   treadmill/state.rs   logique d'état pure (Model)
   treadmill/sim.rs     tapis simulé au niveau du protocole (KETTLER_SIM=1)
+  treadmill/profile.rs profils de course : profils de départ, validation, stockage (profiles.json), déroulement (ProfileRun)
   commands.rs          commandes Tauri (fines : délèguent à treadmill/)
 src/
   main.ts, App.svelte, app.css
   lib/types.ts         miroir TypeScript de dto.rs
   lib/api.ts           invoke/listen ; bascule sur un tapis simulé (lib/mock.ts) hors Tauri
   lib/sim.svelte.ts    mode simulateur (navigateur ou Rust) et état du tapis simulé
-  lib/components/      écran de pilotage
+  lib/profiles.ts      profils : bornes et validation (miroir de profile.rs), résumé, ProfileRunner (tapis simulé du navigateur)
+  lib/profiles.svelte.ts liste des profils, écran affiché (console / éditeur), profil en cours d'édition
+  lib/components/      écran de pilotage, éditeur de profils (ProfileEditor, ProfileChart, StepField), ProfilePanel, ProfileStrip
 ```
 
 **Le Rust possède tout l'état et toute la sécurité** ; le frontend affiche les `TreadmillSnapshot` reçus et appelle des commandes. Il ne parle jamais Bluetooth.
@@ -83,6 +86,10 @@ Commandes (toutes `async`, erreur = `String` lisible en français) :
 | `set_target_speed` | `kmh: f32` | Arrondi à 0,1 ; borné à `[speed_min, min(speed_cap, speed_max)]` ; refusé si la bande ne tourne pas |
 | `set_target_incline` | `pct: f32` | Arrondi à 0,1 ; borné aux limites du tapis ; refusé si la bande ne tourne pas |
 | `set_speed_cap` | `kmh: f32` | Plafond appliqué à toute consigne (1–20 km/h, défaut **6,0**). S'il descend sous la consigne courante, la consigne est ramenée au plafond |
+| `list_profiles` | — | Profils de départ (lecture seule) puis profils de l'utilisateur, par nom |
+| `save_profile` | `profile: RunProfile` | Valide et enregistre (crée si `id` est vide) ; rend le profil enregistré. Refusé pour un profil de départ, et pour le profil en cours bande en marche |
+| `delete_profile` | `id: String` | Supprime un profil de l'utilisateur (même refus) |
+| `select_profile` | `id: Option<String>` | Profil déroulé pendant la séance (gardé dans `profiles.json`). Un profil ne se choisit que bande arrêtée ; `null` (aucun) toujours accepté |
 | `sim_status` | — | `SimStatus` du tapis simulé, ou `null` avec le vrai tapis (sert aussi à détecter le mode simulateur) |
 | `sim_action` | `action: SimAction` | Événement sur le tapis simulé (`{ kind: "linkLoss", seconds }`…) ; refusé avec le vrai tapis |
 
@@ -91,6 +98,20 @@ Règles de la session :
 - `elapsed_s` : s'accumule tant que `running == Some(true)` ; remis à 0 quand la distance repart à une valeur inférieure à la précédente (compteur remis à zéro par le tapis).
 - Perte de liaison non voulue → `connection = Reconnecting`, `lost_while_running = (running == Some(true))`, nouvelle tentative toutes les 2 s jusqu'au succès ou à un `disconnect`. Au succès, `lost_while_running` repasse à faux.
 - Toute réponse avec un CRC invalide est ignorée (on attend le polling suivant).
+
+### Profils de course
+
+Un profil = une suite de segments (distance en m, vitesse, inclinaison). Stockés dans `profiles.json` (dossier de données de l'appli : `~/Library/Application Support/<identifiant>/`), avec le profil choisi ; un fichier illisible est renommé `.json.illisible`, jamais écrasé. Trois profils de départ en dur (`starter_profiles`, toutes vitesses ≤ 6,0 km/h = plafond par défaut), en lecture seule : on les duplique pour les adapter. Bornes d'un segment : 50–10 000 m, 0,8–20 km/h, 0–15 % ; 60 segments au plus. Le TS (`profiles.ts`) recopie bornes et messages pour l'éditeur ; le Rust revalide.
+
+Déroulement (choix de l'utilisateur, 2026-11-09), entièrement côté Rust (`ProfileRun` + `Model::profile_order`, appelé en fin de cycle de polling par `Treadmill::drive_profile`) :
+- Choisir un profil ne lance rien. Après « Démarrer », le 1er segment part à la fin du compte à rebours (consigne relue ≥ vitesse min).
+- La progression est la **somme des avancées** du compteur Distance, pas sa valeur : une remise à zéro pendant `Treadmill::start` (démarrage ignoré après une longue pause) ne fait pas reculer le profil. Une remise à zéro hors démarrage, ou un STOP envoyé bande déjà arrêtée (fin de séance), le ramène au début. Pause : progression gardée, consignes du segment renvoyées à la reprise.
+- Changement de segment : vitesse et inclinaison envoyées une fois (bornées et plafonnées comme toute consigne, seulement ce qui diffère), puis vérifiées à la relecture ; non relues en 5 s → renvoi, 3 envois au plus. Ensuite le profil ne touche plus à rien jusqu'au segment suivant : **un réglage manuel (appli ou console) vaut jusqu'à la fin du segment** (`manual` dans `ProfileProgress`).
+- Après le dernier segment : récupération lente, min(3,0 km/h, vitesse du dernier segment) et 0 %, **sans arrêt automatique**.
+- Les envois du profil passent par `write_frame` avec la garde `stop_gen` : un STOP les annule comme toute commande.
+- Interface : section « Profil » de la colonne de droite (liste, ✎ voir/modifier, + créer ; bande en marche : nom + « Sans profil ») ; bande `ProfileStrip` sous la vitesse (segment, mètres restants, aperçu, segment suivant annoncé en orange dans les derniers mètres : min(60 m, 40 % du segment) ; vitesse affichée = vitesse plafonnée). **L'éditeur n'est accessible que bande arrêtée** (`canEditProfiles`) ; si la bande démarre, App.svelte revient d'office à la console (brouillon gardé, « reprendre » dans la section Profil).
+- Clavier dans l'éditeur : Échap envoie toujours l'arrêt ; **Espace dans un champ texte tape une espace** (seule exception à « Espace = arrêt », sûre car l'éditeur n'existe que bande arrêtée). En pause, Échap y termine donc la séance, comme sur la console.
+- À valider sur le vrai tapis : enchaînement des consignes vitesse + inclinaison au changement de segment (deux écritures de suite, chacune avec `WRITE_QUIET`).
 
 ## Git
 
