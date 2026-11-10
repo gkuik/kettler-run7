@@ -26,6 +26,7 @@
     segmentErrors,
     summarize,
   } from "../profiles";
+  import { IMPORT_DEFAULT_SPEED_KMH } from "../gpx";
   import { profiles } from "../profiles.svelte";
   import type { ProfileSegment } from "../types";
   import ProfileChart from "./ProfileChart.svelte";
@@ -40,6 +41,18 @@
   let confirm = $state<"leave" | "delete" | null>(null);
   let saving = $state(false);
   let rowsEl = $state<HTMLElement | null>(null);
+  /** Vitesse donnée d'un coup à tous les segments d'un profil importé. */
+  let allSpeed = $state(IMPORT_DEFAULT_SPEED_KMH);
+  const allSpeedError = $derived(
+    Number.isFinite(allSpeed) && allSpeed >= SPEED_MIN_KMH && allSpeed <= SPEED_MAX_KMH
+      ? undefined
+      : `Entre ${decimal(SPEED_MIN_KMH, 1)} et ${decimal(SPEED_MAX_KMH, 1)} km/h`,
+  );
+
+  function setAllSpeeds(v: number) {
+    allSpeed = v;
+    if (Number.isFinite(v)) draft.segments = draft.segments.map((s) => ({ ...s, speedKmh: v }));
+  }
 
   const title = $derived(
     readOnly ? "Profil de départ" : draft.id ? "Modifier le profil" : "Nouveau profil",
@@ -163,6 +176,32 @@
   {:else if readOnly}
     <div class="notice">
       Profil fourni avec l'application, en lecture seule. <strong>Dupliquer</strong> en fait une copie que vous pouvez adapter.
+    </div>
+  {:else if profiles.imported}
+    {@const imp = profiles.imported}
+    <div class="notice imported">
+      <span class="what">
+        Relief de <strong>{imp.fileName}</strong> :
+        {formatProfileDistance(imp.totalM)}{#if imp.hasElevation}, +{Math.round(imp.gainM)} m / −{Math.round(imp.lossM)} m.
+          Les descentes sont à plat (le tapis ne descend pas).{:else}, sans altitude dans le fichier : tout est à plat.{/if}
+        Les vitesses du fichier ne sont pas reprises.
+      </span>
+      <span class="all-speed">
+        <span>Vitesse de tous les segments</span>
+        <span class="field">
+          <StepField
+            label="Vitesse de tous les segments"
+            unit="km/h"
+            value={allSpeed}
+            step={SPEED_STEP_KMH}
+            min={SPEED_MIN_KMH}
+            max={SPEED_MAX_KMH}
+            digits={1}
+            error={allSpeedError}
+            onchange={setAllSpeeds}
+          />
+        </span>
+      </span>
     </div>
   {/if}
 
@@ -411,6 +450,30 @@
   .notice {
     background: var(--kr-surface-2);
     color: var(--kr-text-2);
+  }
+
+  .notice.imported {
+    flex-wrap: nowrap;
+    gap: var(--kr-sp-4);
+  }
+
+  .what {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .all-speed {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--kr-sp-2);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--kr-text-2);
+  }
+
+  .all-speed .field {
+    width: 168px;
   }
 
   .chart-card,

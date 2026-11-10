@@ -13,6 +13,18 @@
   const starters = $derived(profiles.list.filter((p) => p.builtin));
   const mine = $derived(profiles.list.filter((p) => !p.builtin));
 
+  let fileInput = $state<HTMLInputElement | null>(null);
+
+  // Fichier GPX choisi : l'éditeur s'ouvre sur un nouveau profil tiré de son
+  // relief ; une erreur (fichier illisible…) s'affiche comme celle d'une commande.
+  function onFile(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    // Remis à vide : choisir de nouveau le même fichier doit encore marcher.
+    input.value = "";
+    if (file) void treadmill.run(() => profiles.importFile(file));
+  }
+
   function onChange(e: Event) {
     const select = e.currentTarget as HTMLSelectElement;
     const id = select.value || null;
@@ -74,11 +86,24 @@
         </svg>
       </button>
     </div>
-    {#if profiles.suspended}
-      <button type="button" class="resume" onclick={() => profiles.resume()}>
-        Modifications non enregistrées · reprendre
+    <div class="links">
+      {#if profiles.suspended}
+        <button type="button" class="link resume" onclick={() => profiles.resume()}>
+          Modifications non enregistrées · reprendre
+        </button>
+      {/if}
+      <button
+        type="button"
+        class="link"
+        title="Créer un profil à partir du relief d'un parcours GPX"
+        onclick={() => fileInput?.click()}
+      >
+        Importer un parcours GPX
       </button>
-    {/if}
+      <!-- Pas d'`accept` : WebKit ne connaît pas toujours l'extension .gpx et
+           griserait le fichier ; le contenu est vérifié à la lecture. -->
+      <input class="file" type="file" bind:this={fileInput} onchange={onFile} tabindex="-1" aria-hidden="true" />
+    </div>
   {:else}
     <div class="row">
       <div class="current">{snap.profile?.profileName ?? "Aucun profil"}</div>
@@ -138,6 +163,10 @@
     outline-offset: 2px;
   }
 
+  .file {
+    display: none;
+  }
+
   .icon {
     width: 44px;
     flex-shrink: 0;
@@ -167,14 +196,27 @@
     color: var(--kr-text-2);
   }
 
-  .resume {
-    align-self: flex-start;
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kr-sp-1) var(--kr-sp-3);
+  }
+
+  .link {
     padding: 0;
     border: 0;
     background: none;
     font-size: 13px;
     font-weight: 600;
-    color: var(--kr-accent);
+    color: var(--kr-text-2);
     text-decoration: underline;
+  }
+
+  .link:hover {
+    color: var(--kr-text);
+  }
+
+  .link.resume {
+    color: var(--kr-accent);
   }
 </style>

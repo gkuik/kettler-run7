@@ -1,4 +1,5 @@
 import { api, errorMessage } from "./api";
+import { importGpx, type GpxImportInfo } from "./gpx";
 import { cloneProfile, copyName, nextSegment, sameContent } from "./profiles";
 import { treadmill } from "./treadmill.svelte";
 import type { RunProfile } from "./types";
@@ -9,6 +10,9 @@ import type { RunProfile } from "./types";
 // le Rust en est seul maître.
 
 export type View = "console" | "editor";
+
+/** Taille maximale d'un fichier GPX importé (une sortie de 1 h 30 à un point par seconde : ~1 Mo). */
+const MAX_GPX_BYTES = 20 * 1024 * 1024;
 
 class ProfileStore {
   list = $state<RunProfile[]>([]);
@@ -23,6 +27,8 @@ class ProfileStore {
   editorError = $state<string | null>(null);
   /** Message bref après un enregistrement réussi. */
   saved = $state(false);
+  /** Le brouillon vient d'un fichier GPX (pas encore enregistré) : ce qu'on y a trouvé. */
+  imported = $state<GpxImportInfo | null>(null);
 
   private savedTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -61,6 +67,20 @@ class ProfileStore {
     this.draft = p
       ? cloneProfile(p)
       : { id: "", name: "", builtin: false, segments: [nextSegment([])] };
+    this.imported = null;
+    this.resume();
+  }
+
+  /**
+   * Ouvre l'éditeur sur un nouveau profil tiré du relief d'un fichier GPX
+   * (rien n'est enregistré). Erreur lisible si le fichier n'est pas utilisable.
+   */
+  async importFile(file: File): Promise<void> {
+    if (file.size > MAX_GPX_BYTES) throw new Error("Fichier trop gros pour un parcours GPX (20 Mo au plus).");
+    const { name, segments, info } = importGpx(await file.text(), file.name);
+    this.original = null;
+    this.draft = { id: "", name, builtin: false, segments };
+    this.imported = info;
     this.resume();
   }
 
@@ -78,6 +98,7 @@ class ProfileStore {
     if (!this.suspended) {
       this.draft = null;
       this.original = null;
+      this.imported = null;
     }
     this.view = "console";
   }
@@ -92,6 +113,7 @@ class ProfileStore {
     copy.name = copyName(d.name, this.list.map((p) => p.name));
     this.draft = copy;
     this.original = null;
+    this.imported = null;
     this.editorError = null;
     this.flashSaved(false);
   }
@@ -105,6 +127,7 @@ class ProfileStore {
       const saved = await api.saveProfile(cloneProfile(d));
       this.draft = cloneProfile(saved);
       this.original = cloneProfile(saved);
+      this.imported = null;
       this.editorError = null;
       await this.refresh();
       if (isNew) await api.selectProfile(saved.id).catch(() => undefined);
