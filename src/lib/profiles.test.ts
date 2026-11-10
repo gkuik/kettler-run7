@@ -11,6 +11,8 @@ import {
   segmentErrors,
   starterProfiles,
   summarize,
+  formatGain,
+  segmentGainM,
 } from "./profiles";
 import type { ProfileSegment, RunProfile } from "./types";
 
@@ -94,6 +96,18 @@ describe("résumé", () => {
     expect(s.maxSpeedKmh).toBe(4.8);
     expect(formatDuration(s.durationS)).toBe("≈ 15 min");
     expect(formatDuration(3900)).toBe("≈ 1 h 05");
+  });
+
+  it("dénivelé d'un segment (pour information)", () => {
+    expect(segmentGainM(seg(400, 4.8, 5))).toBe(20);
+    expect(segmentGainM(seg(400, 4.8, 0))).toBe(0);
+    expect(segmentGainM(seg(Number.NaN, 4.8, 5))).toBeNull();
+    expect(formatGain(segmentGainM(seg(400, 4, 5)))).toBe("+20 m");
+    expect(formatGain(segmentGainM(seg(100, 4, 0.5)))).toBe("+0,5 m");
+    expect(formatGain(segmentGainM(seg(2500, 4, 0)))).toBe("0 m");
+    expect(formatGain(12.6)).toBe("+13 m");
+    expect(formatGain(9)).toBe("+9 m");
+    expect(formatGain(null)).toBe("—");
     expect(formatProfileDistance(850)).toBe("850 m");
     expect(formatProfileDistance(2200)).toBe("2,2 km");
   });

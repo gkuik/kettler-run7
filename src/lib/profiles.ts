@@ -136,6 +136,24 @@ export interface ProfileSummary {
   maxInclinePct: number;
 }
 
+/**
+ * Montée d'un segment sur le tapis (m) : distance × inclinaison. Pour
+ * information seulement ; `null` tant qu'une valeur saisie est invalide.
+ */
+export function segmentGainM(s: ProfileSegment): number | null {
+  if (!Number.isFinite(s.distanceM) || !Number.isFinite(s.inclinePct)) return null;
+  return (Math.max(0, s.distanceM) * Math.max(0, s.inclinePct)) / 100;
+}
+
+/** Dénivelé d'un segment : « 0 m », « +0,5 m » (dixième sous 10 m), « +9 m », « +12 m » ; « — » si inconnu. */
+export function formatGain(m: number | null): string {
+  if (m === null) return "—";
+  if (m < 0.05) return "0 m";
+  const tenth = Math.round(m * 10) / 10;
+  if (m < 10 && !Number.isInteger(tenth)) return `+${decimal(tenth, 1)} m`;
+  return `+${Math.round(m)} m`;
+}
+
 export function summarize(segments: ProfileSegment[]): ProfileSummary {
   let totalM = 0;
   let durationS = 0;
@@ -146,7 +164,7 @@ export function summarize(segments: ProfileSegment[]): ProfileSummary {
     const d = Math.max(0, s.distanceM || 0);
     totalM += d;
     if (s.speedKmh > 0) durationS += d / (s.speedKmh / 3.6);
-    gainM += (d * Math.max(0, s.inclinePct || 0)) / 100;
+    gainM += segmentGainM(s) ?? 0;
     maxSpeedKmh = Math.max(maxSpeedKmh, s.speedKmh || 0);
     maxInclinePct = Math.max(maxInclinePct, s.inclinePct || 0);
   }

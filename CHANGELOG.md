@@ -12,6 +12,9 @@ Toutes les évolutions notables de l'application. Format inspiré de
   courts puis un aigu, au moment où le segment suivant s'annonce en orange.
 - Son de changement de segment (« ding-dong » montant) quand le profil passe
   effectivement au segment suivant, ou à la récupération après le dernier.
+- Colonne « Dénivelé » dans le tableau des segments de l'éditeur, pour
+  information : la montée de chaque segment sur le tapis (distance ×
+  inclinaison), en mètres.
 
 ### Corrigé
 - Le message d'erreur noir ne recouvre plus les mesures du bas (inclinaison,
