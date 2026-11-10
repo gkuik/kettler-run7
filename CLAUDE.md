@@ -67,6 +67,7 @@ src/
   lib/sim.svelte.ts    mode simulateur (navigateur ou Rust) et état du tapis simulé
   lib/profiles.ts      profils : bornes et validation (miroir de profile.rs), résumé, ProfileRunner (tapis simulé du navigateur)
   lib/profiles.svelte.ts liste des profils, écran affiché (console / éditeur), profil en cours d'édition
+  lib/gpx.ts           import d'un parcours GPX : lecture, relief → segments (logique pure)
   lib/components/      écran de pilotage, éditeur de profils (ProfileEditor, ProfileChart, StepField), ProfilePanel, ProfileStrip
 ```
 
@@ -112,6 +113,7 @@ Déroulement (choix de l'utilisateur, 2026-11-09), entièrement côté Rust (`Pr
 - Les envois du profil passent par `write_frame` avec la garde `stop_gen` : un STOP les annule comme toute commande.
 - Interface : section « Profil » de la colonne de droite (liste, ✎ voir/modifier, + créer ; bande en marche : nom + « Sans profil ») ; bande `ProfileStrip` sous la vitesse (segment, mètres restants, aperçu, segment suivant annoncé en orange dans les derniers mètres : min(60 m, 40 % du segment), avec un bip au même moment, une fois par segment, `src/lib/beep.ts`) ; un second son (« ding-dong ») quand le segment change vraiment côté Rust (`segmentIndex` qui augmente, récupération comprise). Le son est synthétisé en Web Audio ; WebKit ne l'autorise qu'après un geste, d'où `installAudioUnlock` (premier clic ou première touche). **L'éditeur n'est accessible que bande arrêtée** (`canEditProfiles`) ; si la bande démarre, App.svelte revient d'office à la console (brouillon gardé, « reprendre » dans la section Profil).
 - Clavier dans l'éditeur : Échap envoie toujours l'arrêt ; **Espace dans un champ texte tape une espace** (seule exception à « Espace = arrêt », sûre car l'éditeur n'existe que bande arrêtée). En pause, Échap y termine donc la séance, comme sur la console.
+- **Import GPX** (`src/lib/gpx.ts`, lien « Importer un parcours GPX » sous la liste) : entièrement côté frontend, il ne produit qu'un BROUILLON ouvert dans l'éditeur (`profiles.importFile`) ; le Rust revalide à l'enregistrement comme pour tout profil. Seul le relief est repris : distance par haversine, altitude rééchantillonnée tous les 10 m et lissée sur ±40 m (l'altitude arrondie au mètre double le D+ sinon), pente par tranches de 100 m, descentes à 0 % (le tapis ne descend pas), inclinaison arrondie à 0,5 % et plafonnée à 15 %, puis fusion des voisins (moyenne pondérée des inclinaisons déjà ramenées à 0 : la montée gardée ne change pas) jusqu'à des segments ≥ 200 m, 60 au plus, et à plus de 0,5 % d'écart. Les vitesses enregistrées sont ignorées (souvent à vélo ou avec des arrêts) : 4,0 km/h partout, réglable d'un coup dans le bandeau d'import de l'éditeur. Pas d'attribut `accept` sur le champ fichier (WebKit pourrait griser les `.gpx`). Parseur à expressions régulières (pas de DOMParser, absent des tests Node).
 - À valider sur le vrai tapis : enchaînement des consignes vitesse + inclinaison au changement de segment (deux écritures de suite, chacune avec `WRITE_QUIET`).
 
 ## Git

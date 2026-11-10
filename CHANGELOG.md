@@ -12,6 +12,11 @@ Toutes les évolutions notables de l'application. Format inspiré de
   courts puis un aigu, au moment où le segment suivant s'annonce en orange.
 - Son de changement de segment (« ding-dong » montant) quand le profil passe
   effectivement au segment suivant, ou à la récupération après le dernier.
+- Import d'un parcours GPX (« Importer un parcours GPX », section Profil) : le
+  relief devient un nouveau profil, ouvert dans l'éditeur avant tout
+  enregistrement. Pente mesurée tous les 100 m sur l'altitude lissée, descentes
+  à 0 %, segments de 200 m au moins (60 au plus). Les vitesses du fichier ne sont
+  pas reprises : une même vitesse pour tous les segments, réglable d'un coup.
 
 ### Corrigé
 - Le message d'erreur noir ne recouvre plus les mesures du bas (inclinaison,
