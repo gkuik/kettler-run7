@@ -8,7 +8,11 @@ import { emptySnapshot, type TreadmillSnapshot } from "./types";
 // affiche l'instantané et appelle des commandes.
 
 const SMOOTH_TICK_MS = 250;
-/** Durée d'affichage de l'erreur d'une commande (celle du Rust, `lastError`, reste). */
+/**
+ * Durée d'affichage d'une erreur en toast. Le toast recouvre le bas des mesures :
+ * il ne reste jamais plus longtemps, même si l'erreur du Rust (`lastError`),
+ * elle, reste posée jusqu'à la commande réussie suivante.
+ */
 export const COMMAND_ERROR_MS = 10_000;
 /**
  * Au-delà, une pause envoyée sans effet visible (bande toujours en marche) est
@@ -20,6 +24,12 @@ class TreadmillStore {
   snap = $state<TreadmillSnapshot>(emptySnapshot());
   /** Erreur renvoyée par la dernière commande, effacée au succès suivant (ou après 10 s). */
   commandError = $state<string | null>(null);
+  /**
+   * Erreur de l'instantané (`lastError`) à montrer en toast : 10 s à partir de
+   * son apparition, et jamais pendant une reconnexion (le bandeau orange en
+   * donne la cause, voir `reconnectDetail`).
+   */
+  snapError = $state<string | null>(null);
   /**
    * Échec du dernier STOP (« Arrêt NON envoyé… »). Persistant : effacé par un
    * STOP réussi, par la fermeture manuelle, ou quand la bande est vue arrêtée.
@@ -46,6 +56,9 @@ class TreadmillStore {
   private lastSmooth = 0;
   private started = false;
   private errorTimer: ReturnType<typeof setTimeout> | null = null;
+  private snapErrorTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Dernier `lastError` reçu : un toast ne part qu'à un changement. */
+  private lastSeenError: string | null = null;
   private pauseTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Abonnement à l'événement d'état puis lecture de l'état courant. */
@@ -119,8 +132,23 @@ class TreadmillStore {
     }
   }
 
+  private setSnapError(message: string | null): void {
+    if (this.snapErrorTimer) clearTimeout(this.snapErrorTimer);
+    this.snapErrorTimer = null;
+    this.snapError = message;
+    if (message) {
+      this.snapErrorTimer = setTimeout(() => (this.snapError = null), COMMAND_ERROR_MS);
+    }
+  }
+
   private receive(s: TreadmillSnapshot): void {
     this.snap = s;
+    if (s.connection === "reconnecting") {
+      if (this.snapError) this.setSnapError(null);
+    } else if (s.lastError !== this.lastSeenError) {
+      this.setSnapError(s.lastError);
+    }
+    this.lastSeenError = s.lastError;
     // Liaison rétablie (ou abandonnée) : l'arrêt mémorisé est parti (ou annulé).
     if (s.connection !== "reconnecting") this.stopPending = false;
     // Pause vue (ou état devenu inconnu) : le libellé suit à nouveau l'instantané.

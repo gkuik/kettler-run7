@@ -50,6 +50,11 @@ const RAMP_DOWN_KMH_S = 0.4;
 const INCLINE_PCT_S = 0.3;
 const DISTANCE_REPORT_S = 3;
 const RECONNECT_RETRY_MS = 2000;
+/** Messages de perte de liaison, mot pour mot ceux du Rust (`session.rs`). */
+const MSG_LINK_LOST = "Liaison Bluetooth perdue";
+const MSG_RECONNECT_FAILED =
+  `${MSG_LINK_LOST}, reconnexion en cours… (Tapis RUN 7 introuvable après 5 s de recherche : ` +
+  "vérifiez qu'il est allumé, à portée, et qu'aucune autre application n'y est connectée.)";
 const MSG_PROFILE_RUNNING =
   "La bande tourne : mettez-la en pause pour changer de profil ou le modifier.";
 
@@ -294,6 +299,8 @@ export class MockTreadmill {
     if (this.snap.connection !== "connected") return;
     this.snap.connection = "reconnecting";
     this.snap.lostWhileRunning = this.snap.running === true;
+    // Comme le Rust : la cause de la perte, puis celle de chaque essai raté.
+    this.snap.lastError = MSG_LINK_LOST;
     this.emit();
     const gen = this.generation;
     const until = Date.now() + seconds * 1000;
@@ -303,6 +310,8 @@ export class MockTreadmill {
         this.reconnectTimer = null;
         this.linkUp();
       } else {
+        this.snap.lastError = MSG_RECONNECT_FAILED;
+        this.emit();
         this.reconnectTimer = setTimeout(retry, RECONNECT_RETRY_MS);
       }
     };

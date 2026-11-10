@@ -1,14 +1,15 @@
 <script lang="ts">
-  // Erreurs de commande et de connexion, en bas de la colonne des mesures.
-  // Erreur de l'instantané (Rust) et erreur de la dernière commande : souvent la
-  // même chaîne, on ne l'affiche alors qu'une fois. L'échec d'un STOP a son
-  // propre bandeau (Alerts.svelte) : pas de doublon. Seule l'erreur d'une
-  // commande s'efface d'elle-même : sa barre montre le temps restant.
+  // Erreurs de commande et de connexion, en bas de la colonne des mesures,
+  // qu'elles recouvrent : elles s'effacent donc toutes d'elles-mêmes (10 s, la
+  // barre montre le temps restant). Erreur de l'instantané (Rust) et erreur de
+  // la dernière commande : souvent la même chaîne, on ne l'affiche alors qu'une
+  // fois. L'échec d'un STOP a son propre bandeau (Alerts.svelte) : pas de
+  // doublon. Pendant une reconnexion, l'erreur du Rust n'est pas ici mais dans
+  // le bandeau orange (voir `snapError`).
   import { COMMAND_ERROR_MS, treadmill } from "../treadmill.svelte";
 
-  const snap = $derived(treadmill.snap);
   const errors = $derived(
-    [snap.lastError, treadmill.commandError].filter(
+    [treadmill.snapError, treadmill.commandError].filter(
       (e, i, all): e is string => !!e && all.indexOf(e) === i && e !== treadmill.stopError,
     ),
   );
@@ -34,11 +35,7 @@
           <path d="M12 16.4v.1"></path>
         </svg>
         <div class="message">{error}</div>
-        <div
-          class="bar"
-          class:timed={error !== snap.lastError}
-          style:--duree={`${COMMAND_ERROR_MS}ms`}
-        ></div>
+        <div class="bar" style:--duree={`${COMMAND_ERROR_MS}ms`}></div>
       </div>
     {/each}
   </div>
@@ -88,9 +85,6 @@
     height: 3px;
     width: 100%;
     background: var(--kr-warn);
-  }
-
-  .bar.timed {
     transform-origin: left;
     animation: kr-toast var(--duree) linear forwards;
   }

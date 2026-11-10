@@ -13,6 +13,12 @@ Toutes les évolutions notables de l'application. Format inspiré de
 - Son de changement de segment (« ding-dong » montant) quand le profil passe
   effectivement au segment suivant, ou à la récupération après le dernier.
 
+### Corrigé
+- Le message d'erreur noir ne recouvre plus les mesures du bas (inclinaison,
+  calories, pouls) pendant toute une reconnexion ou toute une séance : pendant
+  une reconnexion, la cause (tapis introuvable…) s'affiche dans le bandeau
+  orange ; les autres erreurs disparaissent d'elles-mêmes au bout de 10 s.
+
 ## [0.2.0] — 2026-11-09
 
 ### Ajouté
