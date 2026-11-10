@@ -337,7 +337,8 @@
         <div class="map-body">
           <RouteMap bind:this={routeMap} {track} segments={draft.segments} {selected} onselect={selectFromChart} />
           <!-- Segment choisi (clic sur le tracé, ‹ ›), en encart sur la carte en
-               bas à droite (au-dessus des mentions des fonds) : sa vitesse s'y règle. -->
+               bas à droite (au-dessus des mentions des fonds) : sa vitesse et son
+               inclinaison s'y règlent. -->
           {#if selected !== null && draft.segments[selected]}
             {@const i = selected}
             {@const seg = draft.segments[i]}
@@ -379,10 +380,6 @@
                   <dt>Longueur</dt>
                   <dd>{Number.isFinite(seg.distanceM) ? formatProfileDistance(seg.distanceM) : "?"}</dd>
                 </div>
-                <div>
-                  <dt>Inclinaison</dt>
-                  <dd>{Number.isFinite(seg.inclinePct) ? decimal(seg.inclinePct, 1) : "?"} %</dd>
-                </div>
                 <div title="Montée du segment sur le tapis : distance × inclinaison (pour information)">
                   <dt>Dénivelé</dt>
                   <dd>{formatGain(segmentGainM(seg))}</dd>
@@ -395,7 +392,7 @@
                 </svg>
                 Zoomer sur la section
               </button>
-              <div class="seg-speed">
+              <div class="seg-input">
                 <span class="kr-label">Vitesse <em>km/h</em></span>
                 <StepField
                   label={`Segment ${i + 1}, vitesse`}
@@ -410,9 +407,24 @@
                   onchange={(v) => update(i, { speedKmh: v })}
                 />
               </div>
+              <div class="seg-input">
+                <span class="kr-label">Inclinaison <em>%</em></span>
+                <StepField
+                  label={`Segment ${i + 1}, inclinaison`}
+                  unit="%"
+                  value={seg.inclinePct}
+                  step={INCLINE_STEP_PCT}
+                  min={INCLINE_MIN_PCT}
+                  max={INCLINE_MAX_PCT}
+                  digits={1}
+                  error={readOnly ? undefined : segmentErrors(seg).incline}
+                  disabled={readOnly}
+                  onchange={(v) => update(i, { inclinePct: v })}
+                />
+              </div>
             </div>
           {:else}
-            <div class="seg-card hint">Cliquez un morceau du tracé pour choisir son segment et régler sa vitesse.</div>
+            <div class="seg-card hint">Cliquez un morceau du tracé pour choisir son segment et régler sa vitesse et son inclinaison.</div>
           {/if}
         </div>
       </div>
@@ -891,14 +903,14 @@
     justify-content: center;
   }
 
-  .seg-speed {
+  .seg-input {
     margin-top: var(--kr-sp-1);
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
 
-  .seg-speed em {
+  .seg-input em {
     font-style: normal;
     font-weight: 400;
     letter-spacing: 0;
