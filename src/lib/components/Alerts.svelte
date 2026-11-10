@@ -5,6 +5,7 @@
   // mémorisé pendant une reconnexion (visible lui aussi sans bouton), reconnexion
   // en cours. Plusieurs peuvent coexister : ils se resserrent alors pour laisser
   // de la place aux commandes.
+  import { reconnectDetail } from "../errors";
   import { treadmill } from "../treadmill.svelte";
   import Spinner from "./Spinner.svelte";
 
@@ -15,6 +16,9 @@
   // L'arrêt mémorisé annonce déjà la reconnexion : pas de doublon.
   const reconnecting = $derived(snap.connection === "reconnecting" && !lost && !memo);
   const count = $derived([lost, !!stopError, memo, reconnecting].filter(Boolean).length);
+  // Pourquoi la reconnexion échoue (tapis introuvable…) : ici plutôt qu'en
+  // toast, qui masquerait les mesures toute la durée de la coupure.
+  const detail = $derived(reconnectDetail(snap.lastError));
 </script>
 
 {#snippet warnIcon()}
@@ -125,6 +129,9 @@
         <div class="text">
           <div class="title">Liaison perdue, reconnexion en cours</div>
           <div class="sub">Les valeurs affichées sont figées.</div>
+          {#if detail}
+            <div class="detail">{detail}</div>
+          {/if}
         </div>
         {@render progress()}
       </div>
@@ -193,6 +200,12 @@
     font-size: var(--kr-fs-sub);
     font-weight: 600;
     line-height: 1.25;
+  }
+
+  .detail {
+    font-size: var(--kr-fs-hint);
+    font-weight: 500;
+    line-height: 1.3;
   }
 
   .progress {
