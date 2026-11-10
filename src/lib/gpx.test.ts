@@ -179,3 +179,12 @@ describe("nom et brouillon", () => {
     expect(r.info.gainM).toBeCloseTo(40, 0);
   });
 });
+
+describe("tracé gardé pour la carte", () => {
+  it("l'import garde un tracé allégé, du départ à l'arrivée", () => {
+    const pts = line(5000, () => 0, 2);
+    const r = importGpx(gpx(pts), "droit.gpx");
+    expect(r.track.length).toBe(2);
+    expect(r.track[0]).toEqual([50, 3]);
+  });
+});

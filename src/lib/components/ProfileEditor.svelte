@@ -30,6 +30,7 @@
   import { profiles } from "../profiles.svelte";
   import type { ProfileSegment } from "../types";
   import ProfileChart from "./ProfileChart.svelte";
+  import RouteMap from "./RouteMap.svelte";
   import StepField from "./StepField.svelte";
 
   const draft = $derived(profiles.draft!);
@@ -41,6 +42,10 @@
   let confirm = $state<"leave" | "delete" | null>(null);
   let saving = $state(false);
   let rowsEl = $state<HTMLElement | null>(null);
+  /** Carte du parcours ouverte (profil importé d'un GPX seulement). */
+  let mapOpen = $state(false);
+  let routeMap = $state<ReturnType<typeof RouteMap> | null>(null);
+  const track = $derived(draft.track && draft.track.length >= 2 ? draft.track : null);
   /** Vitesse donnée d'un coup à tous les segments d'un profil importé. */
   let allSpeed = $state(IMPORT_DEFAULT_SPEED_KMH);
   const allSpeedError = $derived(
@@ -120,6 +125,10 @@
   }
 </script>
 
+<!-- Échap envoie toujours l'arrêt au tapis (App.svelte) ; il ferme aussi la
+     carte, sans empêcher l'arrêt. -->
+<svelte:window onkeydown={(e) => { if (e.key === "Escape") mapOpen = false; }} />
+
 <section class="editor" aria-label="Éditeur de profil">
   <header class="top">
     <button type="button" class="ghost back" onclick={back}>
@@ -143,6 +152,15 @@
     </div>
 
     <div class="actions">
+      {#if track}
+        <button type="button" class="ghost" title="Afficher le parcours sur une carte" onclick={() => (mapOpen = true)}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"></path>
+            <path d="M9 4v14M15 6v14"></path>
+          </svg>
+          Carte
+        </button>
+      {/if}
       <button type="button" class="ghost" onclick={() => profiles.duplicate()}>Dupliquer</button>
       {#if !readOnly && draft.id}
         <button type="button" class="ghost danger" onclick={() => (confirm = "delete")}>Supprimer</button>
@@ -302,6 +320,98 @@
       {/if}
     </div>
   </div>
+
+  {#if mapOpen && track}
+    <div class="map-layer" role="dialog" aria-modal="true" aria-label="Carte du parcours">
+      <div class="map-card">
+        <header class="map-head">
+          <div class="map-title">
+            <span class="kr-label">Parcours</span>
+            <strong>{draft.name.trim() || "Sans nom"}</strong>
+            <span class="map-hint">{formatProfileDistance(summary.totalM)}</span>
+          </div>
+          <button type="button" class="ghost" onclick={() => (mapOpen = false)}>Fermer</button>
+        </header>
+        <div class="map-body">
+          <RouteMap bind:this={routeMap} {track} segments={draft.segments} {selected} onselect={selectFromChart} />
+          <!-- Segment choisi (clic sur le tracé, ‹ ›), en encart sur la carte en
+               bas à droite (au-dessus des mentions des fonds) : sa vitesse s'y règle. -->
+          {#if selected !== null && draft.segments[selected]}
+            {@const i = selected}
+            {@const seg = draft.segments[i]}
+            <div class="seg-card" role="group" aria-label={`Segment ${i + 1} choisi sur la carte`}>
+              <div class="seg-top">
+                <span class="kr-label">Segment</span>
+                <div class="seg-nav">
+                  <button
+                    type="button"
+                    class="tool"
+                    title="Segment précédent"
+                    aria-label="Segment précédent"
+                    disabled={i === 0}
+                    onclick={() => selectFromChart(i - 1)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="tool"
+                    title="Segment suivant"
+                    aria-label="Segment suivant"
+                    disabled={i >= draft.segments.length - 1}
+                    onclick={() => selectFromChart(i + 1)}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="seg-n">{i + 1}<span class="seg-of">&nbsp;/ {draft.segments.length}</span></div>
+              <dl class="seg-facts">
+                <div>
+                  <dt>Parcours</dt>
+                  <dd>
+                    {formatProfileDistance(starts[i])} → {formatProfileDistance(starts[i] + (Number.isFinite(seg.distanceM) ? seg.distanceM : 0))}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Longueur</dt>
+                  <dd>{Number.isFinite(seg.distanceM) ? formatProfileDistance(seg.distanceM) : "?"}</dd>
+                </div>
+                <div>
+                  <dt>Inclinaison</dt>
+                  <dd>{Number.isFinite(seg.inclinePct) ? decimal(seg.inclinePct, 1) : "?"} %</dd>
+                </div>
+              </dl>
+              <button type="button" class="ghost small seg-zoom" onclick={() => routeMap?.zoomToSegment(i)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="10.5" cy="10.5" r="6"></circle>
+                  <path d="M15 15l5 5M10.5 8v5M8 10.5h5"></path>
+                </svg>
+                Zoomer sur la section
+              </button>
+              <div class="seg-speed">
+                <span class="kr-label">Vitesse <em>km/h</em></span>
+                <StepField
+                  label={`Segment ${i + 1}, vitesse`}
+                  unit="km/h"
+                  value={seg.speedKmh}
+                  step={SPEED_STEP_KMH}
+                  min={SPEED_MIN_KMH}
+                  max={SPEED_MAX_KMH}
+                  digits={1}
+                  error={readOnly ? undefined : segmentErrors(seg).speed}
+                  disabled={readOnly}
+                  onchange={(v) => update(i, { speedKmh: v })}
+                />
+              </div>
+            </div>
+          {:else}
+            <div class="seg-card hint">Cliquez un morceau du tracé pour choisir son segment et régler sa vitesse.</div>
+          {/if}
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <footer class="foot">
     {#if profiles.editorError}
@@ -638,6 +748,156 @@
 
   .add:hover:not(:disabled) {
     background: var(--kr-surface-2);
+  }
+
+  .map-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: var(--kr-pad);
+    background: rgba(5, 9, 14, 0.55);
+  }
+
+  .map-card {
+    width: min(1200px, 100%);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--kr-sp-3);
+    padding: var(--kr-sp-4);
+    border-radius: var(--kr-r-md);
+    background: var(--kr-surface);
+  }
+
+  .map-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--kr-sp-4);
+  }
+
+  .map-title {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 2px var(--kr-sp-3);
+  }
+
+  .map-title strong {
+    font-size: 20px;
+    color: var(--kr-text);
+  }
+
+  .map-hint {
+    font-size: 13px;
+    color: var(--kr-text-3);
+  }
+
+  .map-body {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .map-body {
+    position: relative;
+  }
+
+  .seg-card {
+    position: absolute;
+    right: var(--kr-sp-3);
+    /* Au-dessus des mentions des fonds de carte (Leaflet, en bas à droite). */
+    bottom: 30px;
+    z-index: 1000;
+    width: 260px;
+    padding: var(--kr-sp-3) var(--kr-sp-4) var(--kr-sp-4);
+    border-radius: var(--kr-r-md);
+    background: var(--kr-surface);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+    display: flex;
+    flex-direction: column;
+    gap: var(--kr-sp-2);
+  }
+
+  .seg-card.hint {
+    width: 230px;
+    padding: var(--kr-sp-3) var(--kr-sp-4);
+    font-size: 14px;
+    color: var(--kr-text-2);
+  }
+
+  .seg-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .seg-nav {
+    display: flex;
+    gap: 2px;
+    margin-right: calc(-1 * var(--kr-sp-2));
+  }
+
+  .seg-n {
+    margin-top: -6px;
+    font-family: var(--kr-font-num);
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--kr-text);
+  }
+
+  .seg-of {
+    font-size: 18px;
+    color: var(--kr-text-3);
+  }
+
+  .seg-facts {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .seg-facts div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--kr-sp-3);
+    font-size: 14px;
+  }
+
+  .seg-facts dt {
+    color: var(--kr-text-3);
+  }
+
+  .seg-facts dd {
+    margin: 0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--kr-text);
+  }
+
+  .seg-zoom {
+    justify-content: center;
+  }
+
+  .seg-speed {
+    margin-top: var(--kr-sp-1);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .seg-speed em {
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--kr-text-3);
   }
 
   .foot {

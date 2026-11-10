@@ -101,6 +101,10 @@ pub struct RunProfile {
     #[serde(default)]
     pub builtin: bool,
     pub segments: Vec<ProfileSegment>,
+    /// Tracé du parcours GPX d'origine, allégé (`[latitude, longitude]` en
+    /// degrés), pour la carte de l'éditeur. Absent pour un profil saisi à la main.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub track: Option<Vec<[f64; 2]>>,
 }
 
 /// Où en est le profil choisi (calculé par le Rust, qui seul le déroule).

@@ -23,7 +23,8 @@ import {
   SEGMENT_MIN_M,
   clampSpeed,
 } from "./profiles";
-import type { ProfileSegment } from "./types";
+import { haversineM, simplifyTrack } from "./track";
+import type { ProfileSegment, TrackPoint } from "./types";
 
 /** Point du parcours : position et altitude (`null` si le fichier n'en donne pas). */
 export interface GpxPoint {
@@ -52,6 +53,8 @@ export interface GpxImportInfo {
 export interface GpxImport {
   name: string;
   segments: ProfileSegment[];
+  /** Tracé allégé, gardé avec le profil pour la carte. */
+  track: TrackPoint[];
   info: GpxImportInfo;
 }
 
@@ -133,16 +136,9 @@ export function parseGpx(xml: string): GpxTrack {
 
 // ── Relief ─────────────────────────────────────────────────────────────────
 
-const EARTH_RADIUS_M = 6_371_000;
-
 /** Distance entre deux points (m), formule de haversine. */
 export function distanceM(a: GpxPoint, b: GpxPoint): number {
-  const rad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * rad;
-  const dLon = (b.lon - a.lon) * rad;
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+  return haversineM(a.lat, a.lon, b.lat, b.lon);
 }
 
 /**
@@ -320,6 +316,7 @@ export function importGpx(xml: string, fileName: string, speedKmh = IMPORT_DEFAU
   return {
     name: profileNameFor(fileName, track.name),
     segments,
+    track: simplifyTrack(track.points.map((p) => [p.lat, p.lon])),
     info: { fileName: fileName.replace(/^.*[\\/]/, ""), totalM, gainM, lossM, hasElevation },
   };
 }

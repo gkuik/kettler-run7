@@ -76,6 +76,9 @@ export interface ProfileSegment {
   inclinePct: number;
 }
 
+/** Point d'un parcours : [latitude, longitude] en degrés. */
+export type TrackPoint = [number, number];
+
 /** Profil de course : suite de segments parcourus dans l'ordre. */
 export interface RunProfile {
   /** Identifiant stable ; vide à l'enregistrement d'un nouveau profil. */
@@ -84,6 +87,8 @@ export interface RunProfile {
   /** Profil de départ fourni par l'application : lecture seule (à dupliquer). */
   builtin: boolean;
   segments: ProfileSegment[];
+  /** Tracé du parcours GPX d'origine (allégé), pour la carte ; absent sinon. */
+  track?: TrackPoint[] | null;
 }
 
 /** Où en est le profil choisi (calculé par le Rust, qui seul le déroule). */

@@ -16,6 +16,8 @@ export const INCLINE_MIN_PCT = 0;
 export const INCLINE_MAX_PCT = 15;
 export const MAX_SEGMENTS = 60;
 export const NAME_MAX_CHARS = 40;
+/** Points au plus du tracé gardé avec un profil (l'import en garde ≤ 1000). */
+export const TRACK_MAX_POINTS = 2000;
 export const RECOVERY_SPEED_KMH = 3;
 export const RECOVERY_INCLINE_PCT = 0;
 
@@ -98,7 +100,9 @@ export function clampIncline(pct: number): number {
 
 /** Copie profonde (le profil édité ne doit jamais partager ses segments). */
 export function cloneProfile(p: RunProfile): RunProfile {
-  return { ...p, segments: p.segments.map((s) => ({ ...s })) };
+  const copy: RunProfile = { ...p, segments: p.segments.map((s) => ({ ...s })) };
+  if (p.track) copy.track = p.track.map(([lat, lon]) => [lat, lon]);
+  return copy;
 }
 
 /** Deux profils ont-ils le même contenu (nom et segments) ? */
