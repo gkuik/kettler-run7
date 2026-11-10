@@ -1355,6 +1355,7 @@ mod tests {
                 id: String::new(),
                 name: "Essai".into(),
                 builtin: false,
+                track: None,
                 segments: segments
                     .iter()
                     .map(|&(distance_m, speed_kmh, incline_pct)| ProfileSegment {

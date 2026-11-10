@@ -77,9 +77,9 @@ class ProfileStore {
    */
   async importFile(file: File): Promise<void> {
     if (file.size > MAX_GPX_BYTES) throw new Error("Fichier trop gros pour un parcours GPX (20 Mo au plus).");
-    const { name, segments, info } = importGpx(await file.text(), file.name);
+    const { name, segments, track, info } = importGpx(await file.text(), file.name);
     this.original = null;
-    this.draft = { id: "", name, builtin: false, segments };
+    this.draft = { id: "", name, builtin: false, segments, track };
     this.imported = info;
     this.resume();
   }

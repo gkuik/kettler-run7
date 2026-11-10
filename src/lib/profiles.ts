@@ -16,6 +16,8 @@ export const INCLINE_MIN_PCT = 0;
 export const INCLINE_MAX_PCT = 15;
 export const MAX_SEGMENTS = 60;
 export const NAME_MAX_CHARS = 40;
+/** Points au plus du tracé gardé avec un profil (l'import en garde ≤ 1000). */
+export const TRACK_MAX_POINTS = 2000;
 export const RECOVERY_SPEED_KMH = 3;
 export const RECOVERY_INCLINE_PCT = 0;
 
@@ -98,7 +100,9 @@ export function clampIncline(pct: number): number {
 
 /** Copie profonde (le profil édité ne doit jamais partager ses segments). */
 export function cloneProfile(p: RunProfile): RunProfile {
-  return { ...p, segments: p.segments.map((s) => ({ ...s })) };
+  const copy: RunProfile = { ...p, segments: p.segments.map((s) => ({ ...s })) };
+  if (p.track) copy.track = p.track.map(([lat, lon]) => [lat, lon]);
+  return copy;
 }
 
 /** Deux profils ont-ils le même contenu (nom et segments) ? */
@@ -136,6 +140,24 @@ export interface ProfileSummary {
   maxInclinePct: number;
 }
 
+/**
+ * Montée d'un segment sur le tapis (m) : distance × inclinaison. Pour
+ * information seulement ; `null` tant qu'une valeur saisie est invalide.
+ */
+export function segmentGainM(s: ProfileSegment): number | null {
+  if (!Number.isFinite(s.distanceM) || !Number.isFinite(s.inclinePct)) return null;
+  return (Math.max(0, s.distanceM) * Math.max(0, s.inclinePct)) / 100;
+}
+
+/** Dénivelé d'un segment : « 0 m », « +0,5 m » (dixième sous 10 m), « +9 m », « +12 m » ; « — » si inconnu. */
+export function formatGain(m: number | null): string {
+  if (m === null) return "—";
+  if (m < 0.05) return "0 m";
+  const tenth = Math.round(m * 10) / 10;
+  if (m < 10 && !Number.isInteger(tenth)) return `+${decimal(tenth, 1)} m`;
+  return `+${Math.round(m)} m`;
+}
+
 export function summarize(segments: ProfileSegment[]): ProfileSummary {
   let totalM = 0;
   let durationS = 0;
@@ -146,7 +168,7 @@ export function summarize(segments: ProfileSegment[]): ProfileSummary {
     const d = Math.max(0, s.distanceM || 0);
     totalM += d;
     if (s.speedKmh > 0) durationS += d / (s.speedKmh / 3.6);
-    gainM += (d * Math.max(0, s.inclinePct || 0)) / 100;
+    gainM += segmentGainM(s) ?? 0;
     maxSpeedKmh = Math.max(maxSpeedKmh, s.speedKmh || 0);
     maxInclinePct = Math.max(maxInclinePct, s.inclinePct || 0);
   }

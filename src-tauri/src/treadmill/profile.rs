@@ -39,6 +39,8 @@ pub const INCLINE_MIN_PCT: f32 = 0.0;
 pub const INCLINE_MAX_PCT: f32 = 15.0;
 pub const MAX_SEGMENTS: usize = 60;
 pub const NAME_MAX_CHARS: usize = 40;
+/// Points au plus du tracé gardé avec un profil (l'import en garde ≤ 1000).
+pub const TRACK_MAX_POINTS: usize = 2000;
 
 /// Délai pour voir les consignes envoyées relues sur le tapis (mesuré : ~1,4 s).
 const CONFIRM: Duration = Duration::from_secs(5);
@@ -74,6 +76,7 @@ pub fn starter_profiles() -> Vec<RunProfile> {
         name: name.into(),
         builtin: true,
         segments,
+        track: None,
     };
     let mut fractionne = vec![seg(400, 4.0, 0.0)];
     for _ in 0..4 {
@@ -156,7 +159,31 @@ pub fn validate(profile: &RunProfile) -> Result<RunProfile, String> {
         name,
         builtin: false,
         segments,
+        track: validate_track(profile.track.as_deref())?,
     })
+}
+
+/// Tracé d'un profil : 2 à `TRACK_MAX_POINTS` points de coordonnées valides,
+/// arrondies au millionième de degré (~0,1 m). Un tracé vide n'est pas gardé.
+fn validate_track(track: Option<&[[f64; 2]]>) -> Result<Option<Vec<[f64; 2]>>, String> {
+    let Some(track) = track.filter(|t| !t.is_empty()) else {
+        return Ok(None);
+    };
+    if track.len() < 2 || track.len() > TRACK_MAX_POINTS {
+        return Err(format!("Tracé du parcours : 2 à {TRACK_MAX_POINTS} points."));
+    }
+    let r = |x: f64| (x * 1e6).round() / 1e6;
+    track
+        .iter()
+        .map(|&[lat, lon]| {
+            if lat.is_finite() && lon.is_finite() && lat.abs() <= 90.0 && lon.abs() <= 180.0 {
+                Ok([r(lat), r(lon)])
+            } else {
+                Err("Tracé du parcours : coordonnées invalides.".to_string())
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map(Some)
 }
 
 // ── Déroulement ─────────────────────────────────────────────────────────────
@@ -516,6 +543,7 @@ mod tests {
             name: "Test".into(),
             builtin: false,
             segments,
+            track: None,
         }
     }
 
@@ -550,7 +578,35 @@ mod tests {
         assert!(err(profile(vec![seg(100, 3.0, 16.0)])).contains("inclinaison"));
         assert!(err(profile(vec![seg(100, f32::NAN, 0.0)])).contains("vitesse"));
         // Un profil reçu « de départ » est enregistré comme profil de l'utilisateur.
-        assert!(!validate(&RunProfile { builtin: true, ..ok }).unwrap().builtin);
+        assert!(!validate(&RunProfile { builtin: true, ..ok.clone() }).unwrap().builtin);
+    }
+
+    #[test]
+    fn validation_du_trace() {
+        let ok = profile(vec![seg(100, 3.0, 0.0)]);
+        let with = |track: Vec<[f64; 2]>| RunProfile { track: Some(track), ..ok.clone() };
+        let v = validate(&with(vec![[50.123_456_789, 3.2], [50.2, -3.3]])).unwrap();
+        assert_eq!(v.track, Some(vec![[50.123_457, 3.2], [50.2, -3.3]]));
+        assert_eq!(validate(&with(vec![])).unwrap().track, None, "tracé vide non gardé");
+        assert!(validate(&with(vec![[50.0, 3.0]])).unwrap_err().contains("2 à"));
+        assert!(validate(&with(vec![[50.0, 3.0]; TRACK_MAX_POINTS + 1])).is_err());
+        assert!(validate(&with(vec![[91.0, 3.0], [50.0, 3.0]])).unwrap_err().contains("invalides"));
+        assert!(validate(&with(vec![[f64::NAN, 3.0], [50.0, 3.0]])).is_err());
+    }
+
+    #[test]
+    fn trace_sur_disque_et_ancien_format() {
+        // Un profil sans tracé s'écrit sans le champ, et un ancien fichier (sans
+        // `track`) se relit tel quel.
+        let ok = profile(vec![seg(100, 3.0, 0.0)]);
+        let json = serde_json::to_string(&ok).unwrap();
+        assert!(!json.contains("track"));
+        let back: RunProfile = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.track, None);
+        let with = RunProfile { track: Some(vec![[50.0, 3.0], [50.1, 3.1]]), ..ok };
+        let json = serde_json::to_string(&with).unwrap();
+        assert!(json.contains(r#""track":[[50.0,3.0],[50.1,3.1]]"#), "{json}");
+        assert_eq!(serde_json::from_str::<RunProfile>(&json).unwrap(), with);
     }
 
     #[test]

@@ -803,6 +803,7 @@ mod tests {
             id: "p".into(),
             name: "Profil".into(),
             builtin: false,
+            track: None,
             segments: segments
                 .iter()
                 .map(|&(distance_m, speed_kmh, incline_pct)| ProfileSegment {

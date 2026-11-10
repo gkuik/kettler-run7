@@ -29,6 +29,17 @@
   --kr-stop: #C8282E;    --kr-stop-ink: #FFFFFF;
   --kr-stop-deep: #8A1519;
   --kr-warn: #F07A1A;    --kr-warn-ink: #2A1000;
+  /* Carte du parcours : les fonds de carte sont toujours clairs, ces couleurs
+     ne changent donc pas en thème sombre. Segments colorés par une échelle
+     ordinale bleue (donnée), clair → foncé, 5 teintes ; la plus claire reste
+     à plus de 2:1 sur fond clair, et le liseré foncé la détache de la carte. */
+  --kr-map-seq-1: #86B6EF;
+  --kr-map-seq-2: #5598E7;
+  --kr-map-seq-3: #2A78D6;
+  --kr-map-seq-4: #1C5CAB;
+  --kr-map-seq-5: #104281;
+  --kr-map-none: #9AA3AF;
+  --kr-map-casing: #0B1017;
   /* Typographie */
   --kr-font-num: "Barlow Semi Condensed", "SF Pro Display", system-ui, sans-serif;
   --kr-font-ui: "Barlow", -apple-system, system-ui, sans-serif;
