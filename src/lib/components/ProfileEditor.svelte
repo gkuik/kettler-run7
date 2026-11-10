@@ -20,10 +20,12 @@
     SPEED_MIN_KMH,
     SPEED_STEP_KMH,
     formatDuration,
+    formatGain,
     formatProfileDistance,
     nextSegment,
     profileError,
     segmentErrors,
+    segmentGainM,
     summarize,
   } from "../profiles";
   import { IMPORT_DEFAULT_SPEED_KMH } from "../gpx";
@@ -380,6 +382,10 @@
                 <div>
                   <dt>Inclinaison</dt>
                   <dd>{Number.isFinite(seg.inclinePct) ? decimal(seg.inclinePct, 1) : "?"} %</dd>
+                </div>
+                <div title="Montée du segment sur le tapis : distance × inclinaison (pour information)">
+                  <dt>Dénivelé</dt>
+                  <dd>{formatGain(segmentGainM(seg))}</dd>
                 </div>
               </dl>
               <button type="button" class="ghost small seg-zoom" onclick={() => routeMap?.zoomToSegment(i)}>

@@ -25,6 +25,8 @@ Toutes les évolutions notables de l'application. Format inspiré de
   « Zoomer sur la section ») ; un bouton sous le zoom revient à tout le tracé. Fonds Plan IGN, photos aériennes IGN ou OpenStreetMap. Le tracé
   (allégé à 1000 points au plus) est enregistré avec le profil ; les profils
   importés avant cette version n'en ont pas : réimporter le fichier.
+- Dénivelé du segment choisi dans l'encart de la carte, pour information : sa
+  montée sur le tapis (distance × inclinaison), en mètres.
 
 ### Corrigé
 - Le message d'erreur noir ne recouvre plus les mesures du bas (inclinaison,
