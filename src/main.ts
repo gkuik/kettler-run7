@@ -7,6 +7,7 @@ import "@fontsource/barlow-semi-condensed/latin-600.css";
 import "./app.css";
 import App from "./App.svelte";
 import { browserMock, mock } from "./lib/api";
+import { installAudioUnlock } from "./lib/beep";
 import { profiles } from "./lib/profiles.svelte";
 import { sim } from "./lib/sim.svelte";
 import { treadmill } from "./lib/treadmill.svelte";
@@ -17,6 +18,8 @@ void treadmill.init();
 void sim.init();
 // Profils de course (liste lue sur le Rust ; le profil choisi vient de l'état).
 void profiles.init();
+// Bip d'annonce du segment suivant : WebKit n'autorise le son qu'après un geste.
+installAudioUnlock();
 
 // Mode navigateur : le tapis simulé est accessible depuis la console
 // (`kettlerMock.simulateLinkLoss()`, `.pullSafetyKey()`, `.failNextStopWrite()`,
