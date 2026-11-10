@@ -2,10 +2,12 @@
   // Progression du profil de course, dans la colonne des mesures (affichée
   // seulement quand un profil est choisi) : segment en cours et ses consignes,
   // mètres restants, aperçu avec la partie parcourue, et le changement suivant,
-  // annoncé en orange dans les derniers mètres du segment.
+  // annoncé en orange (et par un bip) dans les derniers mètres du segment ;
+  // un second son marque le changement effectif.
   //
   // La distance du profil (Rust) avance par à-coups comme celle du tapis : on
   // lui ajoute l'avance de la distance lissée affichée (≤ 40 m).
+  import { AnnounceBeeper, SegmentChangeBeeper, playAnnounce, playSegmentChange } from "../beep";
   import { decimal } from "../format";
   import { RECOVERY_SPEED_KMH, formatDuration, formatProfileDistance, summarize } from "../profiles";
   import { profiles } from "../profiles.svelte";
@@ -40,6 +42,20 @@
   );
 
   const summary = $derived(summarize(segments));
+
+  // Bip au moment où le bandeau passe à l'orange, une fois par segment.
+  const beeper = new AnnounceBeeper();
+  $effect(() => {
+    const key = p ? `${p.profileId}#${p.segmentIndex}` : null;
+    if (beeper.update(key, announce, started)) playAnnounce();
+  });
+  // Autre son quand le segment change vraiment (ou que la récupération commence).
+  const changeBeeper = new SegmentChangeBeeper();
+  $effect(() => {
+    if (changeBeeper.update(p?.profileId ?? null, p?.segmentIndex ?? 0, started)) {
+      playSegmentChange();
+    }
+  });
 </script>
 
 {#snippet consigne(s: ProfileSegment)}

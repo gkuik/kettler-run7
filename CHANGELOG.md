@@ -7,6 +7,12 @@ Toutes les évolutions notables de l'application. Format inspiré de
 
 ## [Non publié]
 
+### Ajouté
+- Bip d'avertissement avant chaque changement de segment d'un profil : deux bips
+  courts puis un aigu, au moment où le segment suivant s'annonce en orange.
+- Son de changement de segment (« ding-dong » montant) quand le profil passe
+  effectivement au segment suivant, ou à la récupération après le dernier.
+
 ## [0.2.0] — 2026-11-09
 
 ### Ajouté
