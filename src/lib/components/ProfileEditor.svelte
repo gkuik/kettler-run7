@@ -246,6 +246,7 @@
       <span>Distance <em>m</em></span>
       <span>Vitesse <em>km/h</em></span>
       <span>Inclinaison <em>%</em></span>
+      <span class="gain-head" title="Montée du segment sur le tapis : distance × inclinaison (pour information)">Dénivelé <em>m</em></span>
       <span></span>
     </div>
     <div class="rows" bind:this={rowsEl}>
@@ -295,6 +296,10 @@
             onfocus={() => (selected = i)}
             onchange={(v) => update(i, { inclinePct: v })}
           />
+          <!-- Pour information : montée du segment sur le tapis (descentes à plat). -->
+          <span class="gain" aria-label={`Segment ${i + 1}, dénivelé ${formatGain(segmentGainM(seg))}`}>
+            {formatGain(segmentGainM(seg))}
+          </span>
           <div class="tools">
             {#if !readOnly}
               <button type="button" class="tool" title="Monter" aria-label={`Monter le segment ${i + 1}`} disabled={i === 0} onclick={() => move(i, -1)}>
@@ -661,7 +666,7 @@
 
   .row {
     display: grid;
-    grid-template-columns: minmax(96px, .8fr) repeat(3, minmax(120px, 1fr)) 152px;
+    grid-template-columns: minmax(96px, .8fr) repeat(3, minmax(120px, 1fr)) 96px 152px;
     align-items: center;
     gap: var(--kr-sp-3);
     padding: 6px var(--kr-pad);
@@ -720,6 +725,20 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .gain-head {
+    text-align: right;
+  }
+
+  .gain {
+    text-align: right;
+    font-family: var(--kr-font-num);
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--kr-text-2);
+    white-space: nowrap;
   }
 
   .tools {
