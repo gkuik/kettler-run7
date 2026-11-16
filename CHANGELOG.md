@@ -39,6 +39,8 @@ Toutes les évolutions notables de l'application. Format inspiré de
   calories, pouls) pendant toute une reconnexion ou toute une séance : pendant
   une reconnexion, la cause (tapis introuvable…) s'affiche dans le bandeau
   orange ; les autres erreurs disparaissent d'elles-mêmes au bout de 10 s.
+- L'icône de l'appli n'est plus plus grosse que les autres dans le Dock : elle
+  suit la grille macOS (plaque de 824 px dans 1024, coins arrondis, ombre).
 
 ## [0.2.0] — 2026-11-09
 
