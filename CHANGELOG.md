@@ -29,6 +29,10 @@ Toutes les évolutions notables de l'application. Format inspiré de
 - Dénivelé de chaque segment, pour information : sa montée sur le tapis
   (distance × inclinaison), en mètres, dans une colonne du tableau de l'éditeur
   et dans l'encart du segment choisi sur la carte.
+- Éditeur de profils : un clic n'importe où sur une ligne du tableau choisit le
+  segment, comme un clic sur le graphique (jusqu'ici, seul le focus d'un champ
+  le faisait). Le segment survolé ressort à la fois dans le tableau et sur le
+  graphique, qu'on survole l'un ou l'autre.
 
 ### Corrigé
 - Le message d'erreur noir ne recouvre plus les mesures du bas (inclinaison,

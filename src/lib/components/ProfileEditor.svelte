@@ -41,6 +41,8 @@
   const error = $derived(readOnly ? null : profileError(draft));
 
   let selected = $state<number | null>(null);
+  /** Segment sous la souris, dans le tableau ou sur le graphique : mis en évidence des deux côtés. */
+  let hovered = $state<number | null>(null);
   let confirm = $state<"leave" | "delete" | null>(null);
   let saving = $state(false);
   let rowsEl = $state<HTMLElement | null>(null);
@@ -106,6 +108,13 @@
   function selectFromChart(i: number) {
     selected = i;
     rowsEl?.querySelector(`[data-row="${i}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  /** Clic n'importe où sur une ligne du tableau : choisit le segment, comme sur le graphique.
+   *  Les outils (monter, dupliquer, supprimer…) choisissent eux-mêmes le segment à montrer. */
+  function selectFromRow(e: MouseEvent, i: number) {
+    if ((e.target as Element | null)?.closest(".tools")) return;
+    selected = i;
   }
 
   function back() {
@@ -227,7 +236,7 @@
 
   <div class="chart-card">
     <div class="chart">
-      <ProfileChart segments={draft.segments} {selected} onselect={selectFromChart} />
+      <ProfileChart segments={draft.segments} {selected} onselect={selectFromChart} {hovered} onhover={(i) => (hovered = i)} />
     </div>
     <dl class="summary">
       <div><dt>Distance</dt><dd>{formatProfileDistance(summary.totalM)}</dd></div>
@@ -252,7 +261,17 @@
     <div class="rows" bind:this={rowsEl}>
       {#each draft.segments as seg, i (i)}
         {@const errs = readOnly ? {} : segmentErrors(seg)}
-        <div class="row" class:sel={selected === i} data-row={i}>
+        <!-- Au clavier, le focus d'un champ choisit déjà le segment : le clic n'est qu'un raccourci. -->
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+        <div
+          class="row"
+          class:sel={selected === i}
+          class:hov={hovered === i}
+          data-row={i}
+          onclick={(e) => selectFromRow(e, i)}
+          onmouseenter={() => (hovered = i)}
+          onmouseleave={() => (hovered = null)}
+        >
           <div class="index">
             <span class="n">{i + 1}</span>
             <span class="span">{formatProfileDistance(starts[i])} → {formatProfileDistance(starts[i] + (Number.isFinite(seg.distanceM) ? seg.distanceM : 0))}</span>
@@ -698,6 +717,22 @@
     min-height: 0;
     overflow: hidden auto;
     padding-bottom: var(--kr-sp-3);
+  }
+
+  .rows .row {
+    cursor: pointer;
+  }
+
+  /* Un bouton désactivé (± en butée, « Monter » du premier…) ne reçoit pas le clic :
+     on le laisse passer à la ligne pour qu'elle soit quand même choisie. */
+  .rows .row :global(button:disabled) {
+    pointer-events: none;
+  }
+
+  /* Survol (ligne ou section du graphique) : fond seul ; le choix ajoute le liseré bleu. */
+  .row.hov {
+    background: var(--kr-surface-2);
+    border-left-color: var(--kr-line);
   }
 
   .row.sel {
