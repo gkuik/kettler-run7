@@ -16,10 +16,13 @@
     /** Segment mis en évidence (éditeur). */
     selected?: number | null;
     onselect?: (index: number) => void;
+    /** Segment survolé, ici ou dans le tableau de l'éditeur. */
+    hovered?: number | null;
+    onhover?: (index: number | null) => void;
     compact?: boolean;
   }
 
-  let { segments, doneM = null, selected = null, onselect, compact = false }: Props =
+  let { segments, doneM = null, selected = null, onselect, hovered = null, onhover, compact = false }: Props =
     $props();
 
   // Repère : x de 0 à 1000, y de 0 à 100. Vitesse en haut (0–62), inclinaison en bas (70–100).
@@ -99,6 +102,7 @@
           <rect
             class="speed"
             class:sel={selected === i}
+            class:hov={hovered === i}
             x={b.x + GAP / 2}
             y={b.speedY}
             width={Math.max(0.5, b.w - GAP)}
@@ -107,6 +111,7 @@
           <rect
             class="incline"
             class:sel={selected === i}
+            class:hov={hovered === i}
             x={b.x + GAP / 2}
             y={b.incY}
             width={Math.max(0.5, b.w - GAP)}
@@ -157,6 +162,8 @@
           style:width={pct(b.w)}
           aria-label={`Segment ${i + 1}`}
           onclick={() => onselect?.(i)}
+          onmouseenter={() => onhover?.(i)}
+          onmouseleave={() => onhover?.(null)}
         ></button>
       {/each}
     {/if}
@@ -220,6 +227,17 @@
   }
 
   .incline.sel {
+    fill: var(--kr-text-2);
+  }
+
+  /* Survol (graphique ou ligne du tableau) : contour plus discret que le choix. */
+  .speed.hov:not(.sel) {
+    stroke: var(--kr-text-3);
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .incline.hov:not(.sel) {
     fill: var(--kr-text-2);
   }
 
