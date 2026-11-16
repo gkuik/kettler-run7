@@ -28,6 +28,7 @@ L'application doit tourner sur **macOS 12**. Ce qui en découle :
 - **La WebView est le WebKit du système**, donc au pire celui de Safari 15.0 (macOS 12.0 ; Safari 16–17 seulement si le Mac a été mis à jour). `vite.config.ts` cible `safari15`. Ne pas utiliser sans repli : container queries (`cqi`/`cqh`, `@container` : Safari 16), `color-mix()` (16.2), `:has()`, `dvh`, `@layer`, `:focus-visible` (15.4), `light-dark()`, nesting CSS ; côté JS : `.at()`, `structuredClone`, `Object.hasOwn`, `findLast` (15.4), `toSorted` (16), `Promise.withResolvers` (17.4), `requestIdleCallback` (jamais).
 - Les tailles des chiffres dépendent des container queries : chaque usage a un bloc `@supports not (container-type: size)` qui estime la colonne des mesures avec `--kr-col-w` / `--kr-col-h` (définies dans `src/app.css`). En ajouter un à toute nouvelle déclaration en `cq*`. Le halo vert utilise le token `--kr-go-halo` au lieu de `color-mix()`.
 - Rust : rien de spécifique (btleplug/CoreBluetooth, Tauri 2 : macOS 10.15+).
+- **Icône** : `src-tauri/icons/source.png` remplit tout le carré (icônes Windows/Linux). `icon.icns` (Dock, en dev comme empaqueté) vient de `source-macos.png`, plaque de 824 px dans 1024 avec ombre, sinon l'icône paraît plus grosse que les autres : après un changement de `source.png`, relancer `uv run --with pillow python scripts/icon-macos.py` (et ne pas laisser `tauri icon` écraser `icon.icns`).
 
 ### Simulateur (le tapis est prêté : plus de tests en direct)
 
